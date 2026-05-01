@@ -1,10 +1,73 @@
 # Home DIY Repair Q&A — Synthetic Data Pipeline
 
 A 7-phase pipeline that generates, validates, evaluates, and iteratively improves
-synthetic Q&A pairs for home DIY repair tasks. The pipeline demonstrates the full
-lifecycle of LLM-generated training data: from raw generation through structured
-validation, judge calibration against a real-world benchmark, LLM-as-Judge quality
-scoring, failure analysis, and data-driven iterative prompt correction.
+synthetic Q&A pairs for home DIY repair tasks. Demonstrates the full lifecycle of
+LLM-generated training data: generation → schema validation → judge calibration →
+failure labeling → quality scoring → analysis → data-driven iterative correction.
+
+---
+
+## Prerequisites and setup
+
+### 1. Prerequisites
+
+- Python 3.10+
+- An OpenAI-compatible LLM endpoint for **generation** (OpenAI, Groq, or Ollama)
+- An OpenAI-compatible LLM endpoint for **judging** (can be the same; local Ollama recommended to save cost)
+- [Ollama](https://ollama.com/) optional but recommended for free local judging (`ollama pull qwen2.5:3b`)
+
+> **Important:** all commands must be run from the `src/` directory. The `.env` file
+> is loaded relative to CWD at import time; running from the project root will silently
+> fail to load credentials.
+
+### 2. Install
+
+```bash
+cd synthetic_data_diy/src
+
+# Option A — uv (recommended)
+uv pip install -r requirements.txt
+uv pip install -e ../../llm_utils/    # shared LLM utilities (local editable)
+
+# Option B — pip
+pip install -r requirements.txt
+pip install -e ../../llm_utils/
+```
+
+### 3. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` — minimum required:
+
+```dotenv
+LLM_BASE_URL=https://api.groq.com/openai/v1   # or https://api.openai.com/v1
+LLM_API_KEY=gsk_...                             # your Groq or OpenAI key
+LLM_MODEL=llama-3.1-8b-instant                 # generation model
+
+# Recommended: local Ollama for free judging
+LLM_JUDGE_MODEL=qwen2.5:3b
+LLM_JUDGE_BASE_URL=http://localhost:11434/v1
+LLM_JUDGE_API_KEY=ollama
+LLM_JUDGE_RATE_LIMIT_DELAY=0.0
+```
+
+### 4. Verify setup (no API calls required)
+
+```bash
+# Run the mock pipeline — seeds from HF benchmark, zero API cost
+python main.py mock --batch-label smoke-test --num-samples 10
+
+# Check output
+python main.py stats
+```
+
+Expected: `smoke-test` row shows ✓ for Ph1–Ph6 (Ph7 skipped for mock).
+
+> **No test suite** — this project has no `pytest` tests. The mock pipeline is the
+> fastest way to verify the full wiring end-to-end before using real API credits.
 
 ---
 
@@ -284,7 +347,7 @@ The pipeline makes two distinct types of LLM calls with different cost profiles:
 
 ### Per-run cost estimate (50 samples)
 
-Assumptions: ~300 input / ~500 output tokens per generation call; ~200 input / ~1 output token per judge call (8 dimensions × 50 samples = 400 judge calls, plus 6 failure modes × 50 = 300, plus 50 benchmark calls).
+Assumptions: ~300 input / ~500 output tokens per generation call; ~200 input / ~1 output token per judge call (6 quality dimensions × 50 samples = 300 judge calls, plus 6 failure modes × 50 = 300, plus 50 benchmark calls).
 
 | Role | Model | Provider | Input | Output | Est. cost / run |
 |---|---|---|---|---|---|
@@ -343,7 +406,7 @@ Each run writes to `output/<batch-label>/`. Phase 7 writes its corrected-run out
 | `benchmark_report.json` | Phase 3 | Calibration pass/fail and per-dimension rates |
 | `gate_report.json` | Phase 2 | Gate pass/fail counts, category distribution, dedup count |
 | `failure_labeled_data.{csv,json}` | Phase 4 | 6 binary failure flags per item |
-| `quality_eval_data.{csv,json}` | Phase 5 | 9 quality dimension scores per item |
+| `quality_eval_data.{csv,json}` | Phase 5 | 6 quality dimension scores per item (D1–D6) |
 | `human_labels.json` | `human_labeler.py` / mock | 6 human-rated dimensions per item (used by `agreement` subcommand) |
 | `analysis_report.json` | Phase 6 | Aggregated rates, thresholds met, benchmark gap, problematic trace_ids |
 | `corrected/before_after_comparison.json` | Phase 7 | Improvement %, iterations run, diversity score, per-mode deltas |

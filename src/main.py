@@ -476,7 +476,7 @@ def _run_phases(
 
     # ── Phase 5: Quality Evaluation ───────────────────────────────────────
     if phase_start <= 5 <= phase_end:
-        t0 = _section("PHASE 5 — Quality Evaluation (LLM-as-Judge, 9 dimensions)")
+        t0 = _section("PHASE 5 — Quality Evaluation (LLM-as-Judge, 6 dimensions)")
         import logfire
         from phase2_validation import load_valid_data
         from phase5_quality_eval import run_quality_eval_phase

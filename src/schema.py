@@ -173,7 +173,7 @@ class QualityEvalResult(BaseModel):
     appropriate_scope: int = Field(..., ge=0, le=1)     # D4
     context_clarity: int = Field(..., ge=0, le=1)       # D5
     tip_usefulness: int = Field(..., ge=0, le=1)        # D6
-    overall_quality_pass: int  # 1 if ALL 6 dimensions pass
+    overall_quality_pass: int  # 1 if mean of 6 dimension scores ≥ 0.8 (≥5/6 pass)
 
 
 # ---------------------------------------------------------------------------
