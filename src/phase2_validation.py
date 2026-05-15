@@ -17,7 +17,13 @@ from schema import QAPair, GenerationResult, ValidatedResult, ValidationSummary
 
 # Per-item gate constants
 _MIN_SAFETY_INFO_LEN = 80
+# Calibrated against the HF benchmark (dipenbhuva/home-diy-repair-qa): median
+# safety_info length is ~110 chars. 80 chars catches the generic one-liners
+# ("Be careful. Turn off power.") that fail D2 in human/judge agreement tests,
+# while passing the real-but-short safety notes that appear in the benchmark.
 _MIN_TIP_LEN = 30
+# Tips shorter than 30 chars are typically single-word ("Photograph!") or
+# sentence fragments that don't provide actionable guidance for D6 scoring.
 _SAFETY_GENERIC_PHRASES = frozenset(["be careful", "use caution", "stay safe", "good luck"])
 _TOOL_BLOCKLIST = frozenset(["professional-grade", "trade-only", "specialty"])
 

@@ -93,6 +93,7 @@ class QualityEvaluator:
         return QualityEvalResult(
             trace_id=result.trace_id,
             category=result.category,
+            judge_prompt_version=self.batch_label,  # batch_label encodes the prompt strategy for before/after comparison
             overall_quality_pass=overall_pass,
             **scores,
         )

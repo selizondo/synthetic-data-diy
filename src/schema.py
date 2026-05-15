@@ -167,6 +167,7 @@ QUALITY_DIMENSION_FIELDS: list[str] = [
 class QualityEvalResult(BaseModel):
     trace_id: str
     category: str
+    judge_prompt_version: str = ""  # e.g. "zero_shot_v1"; set from QualityDimension.name+strategy for before/after tracing
     answer_completeness: int = Field(..., ge=0, le=1)   # D1
     safety_specificity: int = Field(..., ge=0, le=1)    # D2
     tool_realism: int = Field(..., ge=0, le=1)          # D3
