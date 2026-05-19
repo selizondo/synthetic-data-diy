@@ -12,7 +12,7 @@ comparison is methodologically valid.
 
 import base64
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import matplotlib
@@ -512,7 +512,7 @@ class FailureAnalyzer:
 </div>"""
 
         title_label = f"Analysis Summary — {batch_label}" if batch_label else "Analysis Summary"
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>

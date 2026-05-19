@@ -36,7 +36,7 @@ import argparse
 import json
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -60,7 +60,7 @@ def _banner(text: str) -> None:
 
 def _section(text: str) -> float:
     """Print a phase section header with timestamp. Returns start time (monotonic)."""
-    ts = datetime.now().strftime("%H:%M:%S")
+    ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
     print(f"\n{'─'*50}\n{text}  [{ts}]\n{'─'*50}")
     return time.monotonic()
 
@@ -690,7 +690,7 @@ def main() -> None:
             return
         labels = ", ".join(b.label for b in baselines)
         _banner(f"HOME DIY REPAIR Q&A — ALL ACTIVE BASELINES ({len(baselines)})")
-        print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Timestamp       : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Generation model: {generation_model} ({settings.base_url})")
         print(f"Judge model     : {judge_model} ({settings.judge_base_url})")
         print(f"Samples         : {args.samples}")
@@ -776,10 +776,10 @@ def main() -> None:
 
     # ── Single baseline run ───────────────────────────────────────────────
     strategy = args.prompt_strategy
-    batch_label = args.batch_label or f"{strategy}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    batch_label = args.batch_label or f"{strategy}-{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
     _banner("HOME DIY REPAIR Q&A SYNTHETIC DATA PIPELINE")
-    print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Timestamp       : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Generation model: {generation_model} ({settings.base_url})")
     print(f"Judge model     : {judge_model} ({settings.judge_base_url})")
     print(f"Samples         : {args.samples}")

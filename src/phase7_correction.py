@@ -14,7 +14,7 @@ Key improvements over a static correction approach:
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -62,7 +62,7 @@ def log_iteration(
 
     entry = {
         "iteration": iteration,
-        "date": datetime.now().strftime("%Y-%m-%d"),
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "phase": "7",
         "change": f"human_feedback prompts, failure context injected targeting: {change_desc}",
         "hypothesis": "Data-driven failure context steers generation away from observed weak spots",
