@@ -16,9 +16,9 @@ Phase 2 applies deterministic rule checks (safety length, generic phrase detecti
 
 Every generated item carries a `trace_id` from Phase 1 through Phase 7 (correction loop). This enables joining records across pipeline output files without a relational database. The alternative — positional joining by JSONL line number — breaks when phases skip items (validation failures, rate-limit drops). Trace IDs also make Langfuse/Logfire observability possible: all LLM calls for a single item share the same trace context.
 
-## JSONL append-only checkpointing
+## Incremental checkpointing (every 5 items)
 
-Completed items are written to JSONL immediately after generation, not batched at phase end. A crash or rate-limit exhaustion loses at most one item. The tradeoff: JSONL is append-only — `--resume` re-reads all existing records and skips already-completed `trace_id` values, adding O(n) startup cost for large runs. This is acceptable at expected dataset sizes (hundreds to low thousands of items).
+Completed items are flushed to `generation_results.json` every 5 items during Phase 1 generation, not batched at phase end. A crash or rate-limit exhaustion loses at most 5 items. On restart, `run_generation_phase()` re-reads the existing file, builds a set of completed `trace_id` values, and skips those items — so the run resumes from where it left off. The implementation: `generate_batch()` fires an `on_result` callback after each item; `run_generation_phase()` supplies a callback that writes every 5th item. The tradeoff: writing every 1 item (truly "immediate") would add one disk write per LLM call; 5 is a practical balance between safety and I/O cost at expected dataset sizes (hundreds to low thousands of items).
 
 ## Correction loop re-validates after fixing (Phase 7)
 

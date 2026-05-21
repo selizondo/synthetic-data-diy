@@ -9,6 +9,7 @@ benchmark cache instead of calling an LLM (zero API credentials required).
 import json
 import random
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 from instructor.exceptions import InstructorRetryException
@@ -168,9 +169,16 @@ class DIYDatasetGenerator:
         num_samples: int,
         samples_per_category: int | None = None,
         remaining_per_category: dict[str, int] | None = None,
+        on_result: Callable[["GenerationResult"], None] | None = None,
     ) -> list[GenerationResult]:
-        categories = [t["category"] for t in self.templates]
+        """Generate a batch of QA pairs according to the schedule.
 
+        Args:
+            on_result: Optional callback fired after each item is generated.
+                       Used by run_generation_phase() to write incremental
+                       checkpoints so a crash loses at most `checkpoint_every`
+                       items rather than the entire batch.
+        """
         if remaining_per_category is not None:
             # Resume mode: generate exactly what's still needed per category.
             schedule: list[int] = []
@@ -203,6 +211,8 @@ class DIYDatasetGenerator:
             status = "OK" if result.parse_error is None else f"FAIL ({result.parse_error[:60]})"
             print(status)
             results.append(result)
+            if on_result is not None:
+                on_result(result)
         return results
 
 
@@ -374,6 +384,10 @@ def run_answer_generation_phase(
         status = "OK" if result.parse_error is None else f"FAIL ({result.parse_error[:60]})"
         print(status)
         results.append(result)
+        # Checkpoint every 5 items — crash loses at most 5 items.
+        if (i + 1) % 5 == 0:
+            checkpoint = existing_dicts + [r.model_dump() for r in results]
+            out_file.write_text(json.dumps(checkpoint, indent=2, ensure_ascii=False))
 
     parsed = sum(1 for r in results if r.parse_error is None)
     print(f"\nAnswer generation complete: {parsed}/{len(results)} parsed ({parsed/len(results)*100:.1f}% new)")
@@ -440,10 +454,21 @@ def run_generation_phase(
                 return [GenerationResult(**r) for r in existing_dicts]
             print(f"Resume: {len(existing_dicts)} existing, generating {still_needed} more.")
 
+        # Checkpoint every 5 items — crash loses at most 5 items; the resume
+        # mechanism re-reads out_file on next run and skips completed trace_ids.
+        _checkpoint_buf: list[GenerationResult] = []
+
+        def _write_checkpoint(result: GenerationResult) -> None:
+            _checkpoint_buf.append(result)
+            if len(_checkpoint_buf) % 5 == 0:
+                merged_so_far = existing_dicts + [r.model_dump() for r in _checkpoint_buf]
+                out_file.write_text(json.dumps(merged_so_far, indent=2, ensure_ascii=False))
+
         results = generator.generate_batch(
             num_samples=num_samples,
             samples_per_category=samples_per_category,
             remaining_per_category=remaining_per_category,
+            on_result=_write_checkpoint,
         )
 
     # Dedup: drop new results whose trace_id already exists
