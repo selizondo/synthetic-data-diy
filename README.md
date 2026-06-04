@@ -1,5 +1,7 @@
 # Synthetic Data DIY — Home Repair Q&A Generator (P1)
 
+![Tests](https://github.com/selizondo/synthetic-data-diy/actions/workflows/ci.yml/badge.svg)
+
 Automated pipeline that generates, validates, evaluates, and iteratively improves synthetic Q&A training data for a Home DIY Repair assistant.
 
 Spec: [synthetic_data_diy.md](synthetic_data_diy.md)
