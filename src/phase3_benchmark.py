@@ -16,8 +16,8 @@ from pathlib import Path
 import pandas as pd
 
 from config import get_settings
-from schema import BenchmarkReport, QAPair, QualityEvalResult, ValidatedResult
 from schema import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
+from schema import BenchmarkReport, QAPair, QualityEvalResult, ValidatedResult
 
 MIN_BENCHMARK_SAMPLES = 50
 CALIBRATION_PASS_THRESHOLD = 0.80  # judge must score ≥ 80% of benchmark items as pass
@@ -30,12 +30,19 @@ def _check_judge_connectivity(judge_model: str) -> None:
     (e.g. local Ollama) is down — a failure mode that would invalidate calibration.
     """
     from llm_client import chat_complete
+
     test_messages = [
         {"role": "system", "content": "Respond with exactly one digit: 1"},
         {"role": "user", "content": "Ping. Reply with 1."},
     ]
     try:
-        response = chat_complete(test_messages, model=judge_model, temperature=0.0, max_tokens=5, use_judge_client=True)
+        response = chat_complete(
+            test_messages,
+            model=judge_model,
+            temperature=0.0,
+            max_tokens=5,
+            use_judge_client=True,
+        )
         if not response.strip():
             raise RuntimeError("Judge returned an empty response to connectivity check.")
         print(f"  Judge connectivity OK (model: {judge_model}, response: '{response.strip()[:20]}')")
@@ -91,7 +98,7 @@ def run_benchmark_phase(
 
     cached = _load_cached_calibration(cache_dir, output_dir)
     if cached is not None:
-        print(f"  Reusing cached calibration for '{judge_model}' (pass rate: {cached.benchmark_quality_pass_rate*100:.1f}%)")
+        print(f"  Reusing cached calibration for '{judge_model}' (pass rate: {cached.benchmark_quality_pass_rate * 100:.1f}%)")
         print(f"  Cache: {cache_dir}")
         print(f"  To force re-calibration, delete: {cache_dir}")
         return cached
@@ -121,7 +128,11 @@ def run_benchmark_phase(
     eval_results: list[QualityEvalResult] = []
 
     for i, result in enumerate(valid_results):
-        print(f"  [{i+1}/{len(valid_results)}] Evaluating benchmark item... ", end="", flush=True)
+        print(
+            f"  [{i + 1}/{len(valid_results)}] Evaluating benchmark item... ",
+            end="",
+            flush=True,
+        )
         eval_result = evaluator.evaluate(result)
         eval_results.append(eval_result)
         print("PASS" if eval_result.overall_quality_pass else "FAIL")
@@ -131,9 +142,7 @@ def run_benchmark_phase(
 
     benchmark_pass_rate = float(bench_df["overall_quality_pass"].mean())
     calibration_passed = benchmark_pass_rate >= CALIBRATION_PASS_THRESHOLD
-    benchmark_dimension_rates = {
-        d: float(bench_df[d].mean()) for d in QUALITY_DIM_NAMES if d in bench_df.columns
-    }
+    benchmark_dimension_rates = {d: float(bench_df[d].mean()) for d in QUALITY_DIM_NAMES if d in bench_df.columns}
 
     report = BenchmarkReport(
         benchmark_samples_evaluated=len(eval_results),
@@ -162,13 +171,13 @@ def run_benchmark_phase(
     print("BENCHMARK CALIBRATION REPORT")
     print("=" * 50)
     print(f"Benchmark items evaluated : {report.benchmark_samples_evaluated}")
-    print(f"Benchmark pass rate       : {benchmark_pass_rate*100:.1f}%")
-    print(f"Calibration passed (≥{CALIBRATION_PASS_THRESHOLD*100:.0f}%) : {'YES ✓' if calibration_passed else 'NO ✗'}")
+    print(f"Benchmark pass rate       : {benchmark_pass_rate * 100:.1f}%")
+    print(f"Calibration passed (≥{CALIBRATION_PASS_THRESHOLD * 100:.0f}%) : {'YES ✓' if calibration_passed else 'NO ✗'}")
     if not calibration_passed:
         print("  WARNING: Judge calibration failed. Quality scores in Phases 4-5 may be unreliable.")
         print("  Consider reviewing judge prompts in quality_dimensions/ before proceeding.")
     print("\nPer-dimension pass rates:")
     for dim, rate in benchmark_dimension_rates.items():
-        print(f"  {dim.replace('_', ' ').title()}: {rate*100:.1f}%")
+        print(f"  {dim.replace('_', ' ').title()}: {rate * 100:.1f}%")
     print(f"\nSaved → {report_path}")
     return report

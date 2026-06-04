@@ -39,10 +39,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_phase_range(phase_str: str) -> tuple[int, int]:
     """Parse '1-5', '6', '3-7' into (start, end) inclusive."""
@@ -61,7 +61,7 @@ def _banner(text: str) -> None:
 def _section(text: str) -> float:
     """Print a phase section header with timestamp. Returns start time (monotonic)."""
     ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
-    print(f"\n{'─'*50}\n{text}  [{ts}]\n{'─'*50}")
+    print(f"\n{'─' * 50}\n{text}  [{ts}]\n{'─' * 50}")
     return time.monotonic()
 
 
@@ -76,6 +76,7 @@ def _phase_done(t0: float, summary: str = "") -> None:
 # ---------------------------------------------------------------------------
 # stats subcommand
 # ---------------------------------------------------------------------------
+
 
 def _phase_status(run_dir: Path) -> dict:
     """Derive per-phase completion status and key metrics from a batch directory."""
@@ -117,9 +118,14 @@ def _phase_status(run_dir: Path) -> dict:
     ph7 = (run_dir / "corrected" / "before_after_comparison.json").exists()
 
     return {
-        "ph1": ph1, "ph2": ph2, "ph3": ph3,
-        "ph4": ph4, "ph5": ph5, "ph5_corrupted": ph5_corrupted,
-        "ph6": ph6, "ph7": ph7,
+        "ph1": ph1,
+        "ph2": ph2,
+        "ph3": ph3,
+        "ph4": ph4,
+        "ph5": ph5,
+        "ph5_corrupted": ph5_corrupted,
+        "ph6": ph6,
+        "ph7": ph7,
         "failure_rate": failure_rate,
         "quality_rate": quality_rate,
     }
@@ -161,15 +167,20 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
         return
 
     all_dirs = (
-        {d.name: d for d in output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")}
-        if output_dir.exists() else {}
+        {d.name: d for d in output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")} if output_dir.exists() else {}
     )
     if not all_dirs:
         print(f"No batch directories found under {output_dir}.")
         print("Run the pipeline first, or use --batch-label <name> to inspect a specific run.")
         return
 
-    from baselines import load_baselines as _load_baselines, active_labels as _active_labels
+    from baselines import (
+        active_labels as _active_labels,
+    )
+    from baselines import (
+        load_baselines as _load_baselines,
+    )
+
     try:
         _baseline_order = [b.label for b in _load_baselines()]
         _active = _active_labels()
@@ -191,8 +202,8 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
 
     for d in batches:
         s = _phase_status(d)
-        fail_str = f"{s['failure_rate']*100:>6.2f}%" if s["failure_rate"] is not None else "      —"
-        qual_str = f"{s['quality_rate']*100:>6.2f}%" if s["quality_rate"] is not None else "      —"
+        fail_str = f"{s['failure_rate'] * 100:>6.2f}%" if s["failure_rate"] is not None else "      —"
+        qual_str = f"{s['quality_rate'] * 100:>6.2f}%" if s["quality_rate"] is not None else "      —"
         ph5_mark = " ✗!" if s["ph5_corrupted"] else ("  ✓  " if s["ph5"] else "  —  ")
         marker = "★ " if d.name in _active else "  "
         label = f"{marker}{d.name}"
@@ -209,18 +220,20 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
         )
         print(row)
 
-    print(f"\n  ★  = active baseline (baselines.yaml)")
-    print(f"  ✓  = complete    —  = not run    ✗! = corrupted (>40% all-zero rows)")
-    print(f"  Use 'python main.py stats --batch-label <name>' for full JSON reports.")
+    print("\n  ★  = active baseline (baselines.yaml)")
+    print("  ✓  = complete    —  = not run    ✗! = corrupted (>40% all-zero rows)")
+    print("  Use 'python main.py stats --batch-label <name>' for full JSON reports.")
 
 
 # ---------------------------------------------------------------------------
 # Phase 7 plan subcommand
 # ---------------------------------------------------------------------------
 
+
 def _plan_phase7(base_output: Path, max_iterations: int) -> None:
     """Scan active baselines, rank by worst failure/quality, preview correction plan."""
     import pandas as pd
+
     from baselines import load_baselines
     from phase7_correction import _build_failure_context
     from schema import FAILURE_MODE_FIELDS, QUALITY_DIMENSION_FIELDS
@@ -235,16 +248,30 @@ def _plan_phase7(base_output: Path, max_iterations: int) -> None:
         quality_csv = run_dir / "quality_eval_data.csv"
 
         if not failure_csv.exists():
-            entries.append({"b": b, "failure_rate": None, "quality_rate": None,
-                            "ph5_clean": None, "failure_df": None})
+            entries.append(
+                {
+                    "b": b,
+                    "failure_rate": None,
+                    "quality_rate": None,
+                    "ph5_clean": None,
+                    "failure_df": None,
+                }
+            )
             continue
 
         try:
             fdf = pd.read_csv(failure_csv)
             failure_rate = float(fdf["overall_failure"].mean())
         except Exception:
-            entries.append({"b": b, "failure_rate": None, "quality_rate": None,
-                            "ph5_clean": None, "failure_df": None})
+            entries.append(
+                {
+                    "b": b,
+                    "failure_rate": None,
+                    "quality_rate": None,
+                    "ph5_clean": None,
+                    "failure_df": None,
+                }
+            )
             continue
 
         quality_rate = None
@@ -259,15 +286,24 @@ def _plan_phase7(base_output: Path, max_iterations: int) -> None:
             except Exception:
                 pass
 
-        entries.append({"b": b, "failure_rate": failure_rate, "quality_rate": quality_rate,
-                        "ph5_clean": ph5_clean, "failure_df": fdf})
+        entries.append(
+            {
+                "b": b,
+                "failure_rate": failure_rate,
+                "quality_rate": quality_rate,
+                "ph5_clean": ph5_clean,
+                "failure_df": fdf,
+            }
+        )
 
     # Rank active baselines with Phase 4 data
     rankable = [e for e in entries if e["b"].active and e["failure_rate"] is not None]
-    rankable.sort(key=lambda e: (
-        -(e["failure_rate"] or 0.0),
-        e["quality_rate"] if e["quality_rate"] is not None else 1.0,
-    ))
+    rankable.sort(
+        key=lambda e: (
+            -(e["failure_rate"] or 0.0),
+            e["quality_rate"] if e["quality_rate"] is not None else 1.0,
+        )
+    )
     rank_map: dict[str, int] = {e["b"].label: i + 1 for i, e in enumerate(rankable)}
     selected = rankable[0] if rankable else None
 
@@ -284,8 +320,8 @@ def _plan_phase7(base_output: Path, max_iterations: int) -> None:
         b = e["b"]
         rank_num = rank_map.get(b.label)
         rank_str = f"{rank_num:>2}" if rank_num is not None else " —"
-        fail_str = f"{e['failure_rate']*100:>6.1f}%" if e["failure_rate"] is not None else "      —"
-        qual_str = f"{e['quality_rate']*100:>6.1f}%" if e["quality_rate"] is not None else "      —"
+        fail_str = f"{e['failure_rate'] * 100:>6.1f}%" if e["failure_rate"] is not None else "      —"
+        qual_str = f"{e['quality_rate'] * 100:>6.1f}%" if e["quality_rate"] is not None else "      —"
         if e["ph5_clean"] is None:
             ph5_str = "   —"
         elif e["ph5_clean"]:
@@ -311,9 +347,9 @@ def _plan_phase7(base_output: Path, max_iterations: int) -> None:
 
     # Preview failure context
     print(f"Selected baseline : {selected['b'].label}")
-    print(f"  Failure rate    : {selected['failure_rate']*100:.1f}%")
+    print(f"  Failure rate    : {selected['failure_rate'] * 100:.1f}%")
     if selected["quality_rate"] is not None:
-        print(f"  Quality pass    : {selected['quality_rate']*100:.1f}%")
+        print(f"  Quality pass    : {selected['quality_rate'] * 100:.1f}%")
     print()
 
     failure_context = _build_failure_context(selected["failure_df"])
@@ -355,6 +391,7 @@ def _plan_phase7(base_output: Path, max_iterations: int) -> None:
 # Phase execution helper
 # ---------------------------------------------------------------------------
 
+
 def _run_phases(
     phase_start: int,
     phase_end: int,
@@ -385,15 +422,24 @@ def _run_phases(
     # ── Phase 1: Generation ───────────────────────────────────────────────
     if phase_start <= 1 <= phase_end:
         import logfire
+
         if shared_questions and _gen_model != "mock":
             t0 = _section("PHASE 1b — Answer Generation (shared question set)")
-            from phase1_generation import load_shared_questions, run_answer_generation_phase, SHARED_QUESTIONS_PATH
+            from phase1_generation import (
+                SHARED_QUESTIONS_PATH,
+                load_shared_questions,
+                run_answer_generation_phase,
+            )
+
             shared_qs = load_shared_questions()
             print(f"Loaded {len(shared_qs)} shared questions from {SHARED_QUESTIONS_PATH.resolve()}")
             with logfire.span(
                 "phase.answer_generation batch={batch_label}",
-                batch_label=batch_label, phase="1b",
-                strategy=strategy, num_samples=len(shared_qs), model=_gen_model,
+                batch_label=batch_label,
+                phase="1b",
+                strategy=strategy,
+                num_samples=len(shared_qs),
+                model=_gen_model,
             ):
                 generation_results = run_answer_generation_phase(
                     shared_questions=shared_qs,
@@ -409,10 +455,14 @@ def _run_phases(
             t0 = _section("PHASE 1 — Generation")
             with logfire.span(
                 "phase.generation batch={batch_label}",
-                batch_label=batch_label, phase=1,
-                strategy=strategy, num_samples=num_samples, model=_gen_model,
+                batch_label=batch_label,
+                phase=1,
+                strategy=strategy,
+                num_samples=num_samples,
+                model=_gen_model,
             ):
                 from phase1_generation import run_generation_phase
+
                 generation_results = run_generation_phase(
                     num_samples=num_samples,
                     generation_model=_gen_model,
@@ -425,29 +475,40 @@ def _run_phases(
                 )
         parsed = sum(1 for r in generation_results if r.parse_error is None)
         phase_timings["1 Generation"] = time.monotonic() - t0
-        _phase_done(t0, f"{parsed}/{len(generation_results)} parsed ({parsed/len(generation_results)*100:.0f}%)")
+        _phase_done(
+            t0,
+            f"{parsed}/{len(generation_results)} parsed ({parsed / len(generation_results) * 100:.0f}%)",
+        )
 
     # ── Phase 2: Structural Validation ───────────────────────────────────
     if phase_start <= 2 <= phase_end:
         t0 = _section("PHASE 2 — Structural Validation")
         from phase1_generation import load_generation_results
         from phase2_validation import run_validation_phase
+
         if generation_results is None:
             generation_results = load_generation_results(output_dir)
             print(f"Loaded {len(generation_results)} generation results from disk.")
         valid_results, summary = run_validation_phase(generation_results, output_dir)
         phase_timings["2 Validation"] = time.monotonic() - t0
-        _phase_done(t0, f"{summary.total_valid}/{summary.total_generated} valid ({summary.validation_rate*100:.0f}%)")
+        _phase_done(
+            t0,
+            f"{summary.total_valid}/{summary.total_generated} valid ({summary.validation_rate * 100:.0f}%)",
+        )
 
     # ── Phase 3: Benchmark Calibration ───────────────────────────────────
     if phase_start <= 3 <= phase_end:
         t0 = _section("PHASE 3 — Benchmark Calibration (judge verification)")
         import logfire
+
         with logfire.span(
             "phase.benchmark batch={batch_label}",
-            batch_label=batch_label, phase=3, judge_model=judge_model,
+            batch_label=batch_label,
+            phase=3,
+            judge_model=judge_model,
         ):
             from phase3_benchmark import run_benchmark_phase
+
             bench = run_benchmark_phase(
                 judge_model=judge_model,
                 output_dir=output_dir,
@@ -455,46 +516,61 @@ def _run_phases(
                 base_output=base_output,
             )
         phase_timings["3 Benchmark"] = time.monotonic() - t0
-        _phase_done(t0, f"pass rate {bench.benchmark_quality_pass_rate*100:.1f}% ({'cached' if time.monotonic()-t0 < 5 else 'calibration passed' if bench.calibration_passed else 'WARNING: calibration failed'})")
+        _phase_done(
+            t0,
+            f"pass rate {bench.benchmark_quality_pass_rate * 100:.1f}% ({'cached' if time.monotonic() - t0 < 5 else 'calibration passed' if bench.calibration_passed else 'WARNING: calibration failed'})",
+        )
 
     # ── Phase 4: Failure Labeling ─────────────────────────────────────────
     if phase_start <= 4 <= phase_end:
         t0 = _section("PHASE 4 — Failure Labeling (LLM-as-Judge, 6 modes)")
         import logfire
+
         from phase2_validation import load_valid_data
         from phase4_failure_labeling import run_failure_labeling_phase
+
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
         with logfire.span(
             "phase.failure_labeling batch={batch_label}",
-            batch_label=batch_label, phase=4, judge_model=judge_model,
+            batch_label=batch_label,
+            phase=4,
+            judge_model=judge_model,
             num_samples=len(valid_results),
         ):
             df4 = run_failure_labeling_phase(valid_results, judge_model, output_dir)
         phase_timings["4 Failure Label"] = time.monotonic() - t0
-        _phase_done(t0, f"overall failure rate {df4['overall_failure'].mean()*100:.1f}%")
+        _phase_done(t0, f"overall failure rate {df4['overall_failure'].mean() * 100:.1f}%")
 
     # ── Phase 5: Quality Evaluation ───────────────────────────────────────
     if phase_start <= 5 <= phase_end:
         t0 = _section("PHASE 5 — Quality Evaluation (LLM-as-Judge, 6 dimensions)")
         import logfire
+
         from phase2_validation import load_valid_data
         from phase5_quality_eval import run_quality_eval_phase
+
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
         with logfire.span(
             "phase.quality_eval batch={batch_label}",
-            batch_label=batch_label, phase=5, judge_model=judge_model,
+            batch_label=batch_label,
+            phase=5,
+            judge_model=judge_model,
             num_samples=len(valid_results),
         ):
             df5 = run_quality_eval_phase(valid_results, judge_model, output_dir)
         phase_timings["5 Quality Eval"] = time.monotonic() - t0
-        _phase_done(t0, f"overall quality pass rate {df5['overall_quality_pass'].mean()*100:.1f}%")
+        _phase_done(
+            t0,
+            f"overall quality pass rate {df5['overall_quality_pass'].mean() * 100:.1f}%",
+        )
 
     # ── Phase 6: Analysis & Visualizations ───────────────────────────────
     if phase_start <= 6 <= phase_end:
         t0 = _section("PHASE 6 — Failure & Quality Analysis")
         from phase6_analysis import run_analysis_phase
+
         _ph6_corrected = corrected_dir if (corrected_dir / "before_after_comparison.json").exists() else None
         run_analysis_phase(output_dir=output_dir, corrected_dir=_ph6_corrected)
         phase_timings["6 Analysis"] = time.monotonic() - t0
@@ -506,6 +582,7 @@ def _run_phases(
     if phase_start <= 7 <= phase_end and run_correction:
         t0 = _section("PHASE 7 — Prompt Correction & Re-evaluation")
         from phase7_correction import run_correction_phase
+
         run_correction_phase(
             num_samples=num_samples,
             generation_model=_gen_model,
@@ -515,6 +592,7 @@ def _run_phases(
             max_iterations=max_iterations,
         )
         from phase6_analysis import run_analysis_phase
+
         print("\nUpdating visualizations with corrected data...")
         run_analysis_phase(output_dir=output_dir, corrected_dir=corrected_dir)
         phase_timings["7 Correction"] = time.monotonic() - t0
@@ -546,47 +624,121 @@ def _print_phase_timings(phase_timings: dict[str, float], output_dir: Path) -> N
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     from dotenv import load_dotenv
+
     load_dotenv()
 
-    parser = argparse.ArgumentParser(
-        description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases"
+    parser = argparse.ArgumentParser(description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases")
+    parser.add_argument(
+        "command",
+        nargs="?",
+        default=None,
+        help="Optional subcommand: 'stats', 'compare', 'agreement', 'mock', 'plan', 'questions'",
     )
-    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement', 'mock', 'plan', 'questions'")
-    parser.add_argument("--samples", type=int, default=50, help="Total Q&A pairs to generate (default: 50)")
-    parser.add_argument("--samples-per-category", type=int, default=None, dest="samples_per_category",
-                        help="Q&A pairs per category (overrides --samples; total = N × num_categories)")
-    parser.add_argument("--overwrite", action="store_true",
-                        help="Overwrite existing generation_results.json instead of appending (default: append)")
-    parser.add_argument("--generation-model", type=str, default=None, dest="generation_model",
-                        help="Generation model override (default: LLM_MODEL from .env)")
-    parser.add_argument("--judge-model", type=str, default=None, dest="judge_model",
-                        help="LLM-as-Judge model override for Phases 3, 4, 5 (default: LLM_JUDGE_MODEL from .env)")
-    parser.add_argument("--phase", type=str, default="1-7",
-                        help="Phase range to run, e.g. '1-6', '3', '7' (default: 1-7)")
-    parser.add_argument("--prompt-strategy", type=str, default="zero_shot",
-                        choices=["zero_shot", "few_shot", "chain_of_thought", "human_feedback", "mock"],
-                        help="Prompt strategy for Phase 1 (default: zero_shot)")
-    parser.add_argument("--batch-label", type=str, default=None,
-                        help="Human-readable label for this run, used as output subdirectory name. "
-                             "Defaults to '<strategy>-<timestamp>'. Ignored when --all-active is set.")
-    parser.add_argument("--all-active", action="store_true", dest="all_active",
-                        help="Run the requested phases for every active baseline in baselines.yaml sequentially.")
-    parser.add_argument("--next", action="store_true",
-                        help="Run the requested phases for the first incomplete baseline in baselines.yaml order.")
-    parser.add_argument("--max-iterations", type=int, default=3, dest="max_iterations",
-                        help="Maximum correction iterations in Phase 7 (default: 3)")
-    parser.add_argument("--output-dir", type=str, default="output", help="Base output directory (default: output)")
-    parser.add_argument("--num-samples", type=int, default=50, dest="num_samples",
-                        help="Benchmark rows to seed (mock subcommand, default: 50)")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="Random seed for Bernoulli draws (mock subcommand, default: 42)")
-    parser.add_argument("--skip-human-labels", action="store_true", dest="skip_human_labels",
-                        help="Skip generating mock human_labels.json (mock subcommand)")
-    parser.add_argument("--shared-questions", action="store_true", dest="shared_questions",
-                        help="Ph1b mode: generate answers for the shared question set in data/shared_questions.json "
-                             "instead of generating new questions. Run 'python main.py questions' first.")
+    parser.add_argument(
+        "--samples",
+        type=int,
+        default=50,
+        help="Total Q&A pairs to generate (default: 50)",
+    )
+    parser.add_argument(
+        "--samples-per-category",
+        type=int,
+        default=None,
+        dest="samples_per_category",
+        help="Q&A pairs per category (overrides --samples; total = N × num_categories)",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing generation_results.json instead of appending (default: append)",
+    )
+    parser.add_argument(
+        "--generation-model",
+        type=str,
+        default=None,
+        dest="generation_model",
+        help="Generation model override (default: LLM_MODEL from .env)",
+    )
+    parser.add_argument(
+        "--judge-model",
+        type=str,
+        default=None,
+        dest="judge_model",
+        help="LLM-as-Judge model override for Phases 3, 4, 5 (default: LLM_JUDGE_MODEL from .env)",
+    )
+    parser.add_argument(
+        "--phase",
+        type=str,
+        default="1-7",
+        help="Phase range to run, e.g. '1-6', '3', '7' (default: 1-7)",
+    )
+    parser.add_argument(
+        "--prompt-strategy",
+        type=str,
+        default="zero_shot",
+        choices=["zero_shot", "few_shot", "chain_of_thought", "human_feedback", "mock"],
+        help="Prompt strategy for Phase 1 (default: zero_shot)",
+    )
+    parser.add_argument(
+        "--batch-label",
+        type=str,
+        default=None,
+        help="Human-readable label for this run, used as output subdirectory name. "
+        "Defaults to '<strategy>-<timestamp>'. Ignored when --all-active is set.",
+    )
+    parser.add_argument(
+        "--all-active",
+        action="store_true",
+        dest="all_active",
+        help="Run the requested phases for every active baseline in baselines.yaml sequentially.",
+    )
+    parser.add_argument(
+        "--next",
+        action="store_true",
+        help="Run the requested phases for the first incomplete baseline in baselines.yaml order.",
+    )
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=3,
+        dest="max_iterations",
+        help="Maximum correction iterations in Phase 7 (default: 3)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="output",
+        help="Base output directory (default: output)",
+    )
+    parser.add_argument(
+        "--num-samples",
+        type=int,
+        default=50,
+        dest="num_samples",
+        help="Benchmark rows to seed (mock subcommand, default: 50)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for Bernoulli draws (mock subcommand, default: 42)",
+    )
+    parser.add_argument(
+        "--skip-human-labels",
+        action="store_true",
+        dest="skip_human_labels",
+        help="Skip generating mock human_labels.json (mock subcommand)",
+    )
+    parser.add_argument(
+        "--shared-questions",
+        action="store_true",
+        dest="shared_questions",
+        help="Ph1b mode: generate answers for the shared question set in data/shared_questions.json "
+        "instead of generating new questions. Run 'python main.py questions' first.",
+    )
 
     args = parser.parse_args()
 
@@ -595,6 +747,7 @@ def main() -> None:
         return
 
     from observability import configure_observability
+
     configure_observability(send_to_logfire=False)
 
     base_output = Path(args.output_dir)
@@ -606,6 +759,7 @@ def main() -> None:
     if args.command == "compare":
         from baselines import active_labels
         from phase6_analysis import run_multi_batch_comparison
+
         run_multi_batch_comparison(base_output, labels=active_labels())
         return
 
@@ -615,11 +769,13 @@ def main() -> None:
             print("  python main.py agreement --batch-label baseline-run")
             return
         from agreement import run_agreement
+
         run_agreement(batch_label=args.batch_label, output_dir=base_output)
         return
 
     if args.command == "mock":
         from mock_seeder import run_mock_pipeline
+
         mock_label = args.batch_label or "baseline-mock"
         _banner("HOME DIY REPAIR Q&A — MOCK PIPELINE (no API calls)")
         print(f"Batch label  : {mock_label}")
@@ -646,13 +802,18 @@ def main() -> None:
 
     if args.command == "questions":
         from config import get_settings
+
         settings = get_settings()
         gen_model = args.generation_model or settings.generation_model
         n = args.samples_per_category or 5
         _banner("HOME DIY REPAIR Q&A — QUESTION GENERATION (Ph1a)")
         print(f"Generation model   : {gen_model}")
-        print(f"Questions/category : {n}  (5 categories → {n*5} total)")
-        from phase1_generation import run_question_generation_phase, SHARED_QUESTIONS_PATH
+        print(f"Questions/category : {n}  (5 categories → {n * 5} total)")
+        from phase1_generation import (
+            SHARED_QUESTIONS_PATH,
+            run_question_generation_phase,
+        )
+
         print(f"Output             : {SHARED_QUESTIONS_PATH.resolve()}")
         questions = run_question_generation_phase(
             num_per_category=n,
@@ -662,7 +823,7 @@ def main() -> None:
         )
         print(f"\nShared question set ready ({len(questions)} questions).")
         print("Next: generate answers per baseline with --shared-questions:")
-        print(f"  python main.py --phase 1-6 --all-active --shared-questions")
+        print("  python main.py --phase 1-6 --all-active --shared-questions")
         return
 
     if args.command == "plan":
@@ -675,6 +836,7 @@ def main() -> None:
 
     # Resolve models from CLI or config
     from config import get_settings
+
     settings = get_settings()
     generation_model = args.generation_model or settings.generation_model
     judge_model = args.judge_model or settings.judge_model
@@ -684,6 +846,7 @@ def main() -> None:
     # ── --all-active: loop through every active baseline sequentially ─────
     if args.all_active:
         from baselines import active_baselines
+
         baselines = active_baselines()
         if not baselines:
             print("No active baselines found in baselines.yaml.")
@@ -699,9 +862,9 @@ def main() -> None:
 
         all_timings: dict[str, float] = {}
         for i, baseline in enumerate(baselines):
-            print(f"\n{'━'*60}")
-            print(f"  Baseline {i+1}/{len(baselines)}: {baseline.label}  (strategy: {baseline.strategy})")
-            print(f"{'━'*60}")
+            print(f"\n{'━' * 60}")
+            print(f"  Baseline {i + 1}/{len(baselines)}: {baseline.label}  (strategy: {baseline.strategy})")
+            print(f"{'━' * 60}")
             timings = _run_phases(
                 phase_start=phase_start,
                 phase_end=phase_end,
@@ -729,8 +892,14 @@ def main() -> None:
     # ── --next: first incomplete baseline in yaml order ───────────────────
     if args.next:
         from baselines import active_baselines
+
         phase_checks = {
-            1: "ph1", 2: "ph2", 3: "ph3", 4: "ph4", 6: "ph6", 7: "ph7",
+            1: "ph1",
+            2: "ph2",
+            3: "ph3",
+            4: "ph4",
+            6: "ph6",
+            7: "ph7",
         }
         selected = None
         for b in active_baselines():
@@ -811,4 +980,5 @@ if __name__ == "__main__":
         main()
     finally:
         from observability import flush_langfuse
+
         flush_langfuse()

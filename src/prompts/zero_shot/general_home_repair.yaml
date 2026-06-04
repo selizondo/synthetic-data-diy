@@ -4,7 +4,7 @@ system: >-
   You are a skilled handyperson with extensive experience in general home
   repairs and maintenance.
 user: |
-  Generate a realistic home repair Q&A pair covering a common problem a homeowner might face for general repair. 
+  Generate a realistic home repair Q&A pair covering a common problem a homeowner might face for general repair.
 
   Return ONLY a valid JSON object with exactly these keys:
   {

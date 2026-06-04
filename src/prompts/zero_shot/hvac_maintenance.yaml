@@ -4,7 +4,7 @@ system: >-
   You are an HVAC technician with expertise in home heating, ventilation, and
   air conditioning systems.
 user: |
-  Generate a realistic home repair Q&A pair covering a common problem a homeowner might face for HVAC repair. 
+  Generate a realistic home repair Q&A pair covering a common problem a homeowner might face for HVAC repair.
 
   Return ONLY a valid JSON object with exactly these keys:
   {

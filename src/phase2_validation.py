@@ -13,7 +13,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from schema import QAPair, GenerationResult, ValidatedResult, ValidationSummary
+from schema import GenerationResult, QAPair, ValidatedResult, ValidationSummary
 
 # Per-item gate constants
 _MIN_SAFETY_INFO_LEN = 80
@@ -34,6 +34,7 @@ _MIN_CATEGORY_FRACTION = 0.20
 # ---------------------------------------------------------------------------
 # Per-item heuristic gates
 # ---------------------------------------------------------------------------
+
 
 def _apply_heuristic_gates(qa: QAPair) -> list[str]:
     """Return gate failure reasons; empty list means all gates passed."""
@@ -70,6 +71,7 @@ def _apply_heuristic_gates(qa: QAPair) -> list[str]:
 # Batch-level checks
 # ---------------------------------------------------------------------------
 
+
 def _normalize_question(q: str) -> str:
     return re.sub(r"[^\w\s]", "", q.lower()).strip()
 
@@ -102,10 +104,9 @@ def _check_category_distribution(
 # Validator class (Pydantic gate)
 # ---------------------------------------------------------------------------
 
+
 class QAPairValidator:
-    def _validate_one(
-        self, result: GenerationResult
-    ) -> tuple[bool, list[str], QAPair | None]:
+    def _validate_one(self, result: GenerationResult) -> tuple[bool, list[str], QAPair | None]:
         if result.parse_error is not None:
             return False, [result.parse_error], None
         if result.raw_dict is None:
@@ -126,20 +127,20 @@ class QAPairValidator:
 
         return len(errors) == 0, errors, qa if not errors else None
 
-    def validate_batch(
-        self, results: list[GenerationResult]
-    ) -> tuple[list[ValidatedResult], ValidationSummary]:
+    def validate_batch(self, results: list[GenerationResult]) -> tuple[list[ValidatedResult], ValidationSummary]:
         valid: list[ValidatedResult] = []
         all_errors: list[str] = []
 
         for result in results:
             ok, errors, qa = self._validate_one(result)
             if ok and qa is not None:
-                valid.append(ValidatedResult(
-                    trace_id=result.trace_id,
-                    category=result.category,
-                    qa_pair=qa,
-                ))
+                valid.append(
+                    ValidatedResult(
+                        trace_id=result.trace_id,
+                        category=result.category,
+                        qa_pair=qa,
+                    )
+                )
             else:
                 all_errors.extend(errors)
 
@@ -158,6 +159,7 @@ class QAPairValidator:
 # Phase entry point
 # ---------------------------------------------------------------------------
 
+
 def run_validation_phase(
     results: list[GenerationResult],
     output_dir: Path,
@@ -165,7 +167,7 @@ def run_validation_phase(
     validator = QAPairValidator()
     schema_valid, summary = validator.validate_batch(results)
 
-    print(f"Structural validation: {summary.total_valid}/{summary.total_generated} passed ({summary.validation_rate*100:.1f}%)")
+    print(f"Structural validation: {summary.total_valid}/{summary.total_generated} passed ({summary.validation_rate * 100:.1f}%)")
     if summary.common_errors:
         print("  Common errors:")
         for err in summary.common_errors:
@@ -177,7 +179,13 @@ def run_validation_phase(
     for item in schema_valid:
         failures = _apply_heuristic_gates(item.qa_pair)
         if failures:
-            gate_failures.append({"trace_id": item.trace_id, "category": item.category, "failures": failures})
+            gate_failures.append(
+                {
+                    "trace_id": item.trace_id,
+                    "category": item.category,
+                    "failures": failures,
+                }
+            )
         else:
             gate_passed.append(item)
     print(f"Heuristic gates:      {len(gate_passed)}/{len(schema_valid)} passed ({len(gate_failures)} dropped)")
@@ -192,17 +200,27 @@ def run_validation_phase(
     # Category distribution
     cat_fractions, dist_ok = _check_category_distribution(final_results)
     if not dist_ok:
-        low = [f"{c} ({f*100:.0f}%)" for c, f in cat_fractions.items() if f < _MIN_CATEGORY_FRACTION]
-        print(f"  WARNING: category distribution unbalanced — below {_MIN_CATEGORY_FRACTION*100:.0f}%: {', '.join(low)}")
+        low = [f"{c} ({f * 100:.0f}%)" for c, f in cat_fractions.items() if f < _MIN_CATEGORY_FRACTION]
+        print(f"  WARNING: category distribution unbalanced — below {_MIN_CATEGORY_FRACTION * 100:.0f}%: {', '.join(low)}")
     else:
-        print("Category distribution OK: " + ", ".join(f"{c}={f*100:.0f}%" for c, f in cat_fractions.items()))
+        print("Category distribution OK: " + ", ".join(f"{c}={f * 100:.0f}%" for c, f in cat_fractions.items()))
 
     # Write outputs
     valid_file = output_dir / "structurally_valid_qa_pairs.json"
-    valid_file.write_text(json.dumps(
-        [{"trace_id": r.trace_id, "category": r.category, "qa_pair": r.qa_pair.model_dump()} for r in final_results],
-        indent=2, ensure_ascii=False,
-    ))
+    valid_file.write_text(
+        json.dumps(
+            [
+                {
+                    "trace_id": r.trace_id,
+                    "category": r.category,
+                    "qa_pair": r.qa_pair.model_dump(),
+                }
+                for r in final_results
+            ],
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
     (output_dir / "validation_summary.json").write_text(json.dumps(summary.model_dump(), indent=2))
 

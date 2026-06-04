@@ -6,11 +6,12 @@ tools_required ≥ 1, tips ≥ 1), and the strip_whitespace / strip_list_items
 validators.
 """
 
+import sys
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
-import sys
-from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from schema import QAPair
@@ -51,11 +52,15 @@ class TestQAPairHappyPath:
         assert not qa.safety_info.startswith(" ")
 
     def test_strip_list_items_removes_whitespace_from_steps(self):
-        qa = QAPair(**_valid_qa(steps=[
-            "  Step one  ",
-            "Step two",
-            "  Step three  ",
-        ]))
+        qa = QAPair(
+            **_valid_qa(
+                steps=[
+                    "  Step one  ",
+                    "Step two",
+                    "  Step three  ",
+                ]
+            )
+        )
         assert qa.steps[0] == "Step one"
         assert qa.steps[2] == "Step three"
 

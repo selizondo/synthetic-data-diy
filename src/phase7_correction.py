@@ -19,19 +19,23 @@ from pathlib import Path
 
 import pandas as pd
 
-from schema import (
-    ComparisonReport,
-    CORRECTION_TARGET_FAILURE_RATE,
-    CORRECTION_TARGET_QUALITY_PASS,
-    CORRECTION_TARGET_IMPROVEMENT,
-    FAILURE_MODE_FIELDS as FAILURE_MODE_NAMES,
-    QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES,
-    ValidatedResult,
-)
 from phase1_generation import run_generation_phase
 from phase2_validation import run_validation_phase
 from phase4_failure_labeling import run_failure_labeling_phase
 from phase5_quality_eval import run_quality_eval_phase
+from schema import (
+    CORRECTION_TARGET_FAILURE_RATE,
+    CORRECTION_TARGET_IMPROVEMENT,
+    CORRECTION_TARGET_QUALITY_PASS,
+    ComparisonReport,
+    ValidatedResult,
+)
+from schema import (
+    FAILURE_MODE_FIELDS as FAILURE_MODE_NAMES,
+)
+from schema import (
+    QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES,
+)
 
 _JACCARD_SIMILARITY_THRESHOLD = 0.8  # pairs above this are considered near-duplicates
 
@@ -55,9 +59,7 @@ def log_iteration(
         reverse=True,
     )
     change_desc = (
-        ", ".join(f"{m} ({r*100:.0f}%)" for m, r in dominant_failures[:3])
-        if dominant_failures
-        else "no failures detected"
+        ", ".join(f"{m} ({r * 100:.0f}%)" for m, r in dominant_failures[:3]) if dominant_failures else "no failures detected"
     )
 
     entry = {
@@ -67,16 +69,13 @@ def log_iteration(
         "change": f"human_feedback prompts, failure context injected targeting: {change_desc}",
         "hypothesis": "Data-driven failure context steers generation away from observed weak spots",
         "result": (
-            f"failure={failure_rate*100:.1f}% "
-            f"(Δ{(baseline_failure_rate - failure_rate)*100:+.1f}pp), "
-            f"quality_pass={quality_pass*100:.1f}%, "
+            f"failure={failure_rate * 100:.1f}% "
+            f"(Δ{(baseline_failure_rate - failure_rate) * 100:+.1f}pp), "
+            f"quality_pass={quality_pass * 100:.1f}%, "
             f"improvement={improvement_pct:.1f}%"
         ),
         "decision": "keep" if targets_met else ("modify" if iteration == 1 else "continue"),
-        "next_step": (
-            "targets met — done" if targets_met
-            else "re-run with updated failure context from this iteration"
-        ),
+        "next_step": ("targets met — done" if targets_met else "re-run with updated failure context from this iteration"),
         "metrics": {
             "failure_rate": round(failure_rate, 4),
             "quality_pass_rate": round(quality_pass, 4),
@@ -87,6 +86,7 @@ def log_iteration(
     }
     existing.append(entry)
     log_path.write_text(json.dumps(existing, indent=2))
+
 
 _MODE_HINTS: dict[str, str] = {
     "incomplete_answer": "Ensure every repair step is fully described; do not omit intermediate steps.",
@@ -108,11 +108,7 @@ def _build_failure_context(failure_df: pd.DataFrame) -> str:
     if failure_df.empty:
         return ""
 
-    mode_rates = {
-        m: float(failure_df[m].mean())
-        for m in FAILURE_MODE_NAMES
-        if m in failure_df.columns
-    }
+    mode_rates = {m: float(failure_df[m].mean()) for m in FAILURE_MODE_NAMES if m in failure_df.columns}
     # Sort by failure rate descending; only include modes that actually failed
     failing = sorted(
         [(m, r) for m, r in mode_rates.items() if r > 0.0],
@@ -128,7 +124,7 @@ def _build_failure_context(failure_df: pd.DataFrame) -> str:
     ]
     for mode, rate in failing:
         label = mode.replace("_", " ").title()
-        lines.append(f"  • {label}: {rate*100:.0f}% failure rate")
+        lines.append(f"  • {label}: {rate * 100:.0f}% failure rate")
         if hint := _MODE_HINTS.get(mode):
             lines.append(f"    → {hint}")
 
@@ -191,20 +187,17 @@ def run_correction_phase(
     human_labels_path = baseline_dir / "human_labels.json"
     if human_labels_path.exists():
         print("Phase A — checking human/LLM agreement before correction...")
-        from agreement import run_agreement, AGREEMENT_THRESHOLD
+        from agreement import AGREEMENT_THRESHOLD, run_agreement
+
         agreement_report = run_agreement(
             batch_label=baseline_dir.name,
             output_dir=baseline_dir.parent,
         )
         if not agreement_report["all_dimensions_meet_threshold"]:
-            failing_dims = [
-                d["label"]
-                for d in agreement_report["dimensions"].values()
-                if not d["meets_threshold"]
-            ]
+            failing_dims = [d["label"] for d in agreement_report["dimensions"].values() if not d["meets_threshold"]]
             raise RuntimeError(
                 f"Phase A gate failed — {len(failing_dims)} dimension(s) below "
-                f"{AGREEMENT_THRESHOLD*100:.0f}% agreement: {', '.join(failing_dims)}.\n"
+                f"{AGREEMENT_THRESHOLD * 100:.0f}% agreement: {', '.join(failing_dims)}.\n"
                 "Fix the corresponding quality_dimensions/*.yaml, re-run Phase 5, "
                 "then re-run agreement before attempting Phase 7."
             )
@@ -222,9 +215,7 @@ def run_correction_phase(
     baseline_failure_csv = baseline_dir / "failure_labeled_data.csv"
     baseline_quality_csv = baseline_dir / "quality_eval_data.csv"
     if not baseline_failure_csv.exists():
-        raise FileNotFoundError(
-            f"Baseline failure data not found: {baseline_failure_csv}. Run Phases 4-5 first."
-        )
+        raise FileNotFoundError(f"Baseline failure data not found: {baseline_failure_csv}. Run Phases 4-5 first.")
 
     baseline_fdf = pd.read_csv(baseline_failure_csv)
     baseline_qdf = pd.read_csv(baseline_quality_csv) if baseline_quality_csv.exists() else pd.DataFrame()
@@ -232,8 +223,8 @@ def run_correction_phase(
     baseline_failure_rate = float(baseline_fdf["overall_failure"].mean())
     baseline_quality_pass = float(baseline_qdf["overall_quality_pass"].mean()) if not baseline_qdf.empty else 0.0
 
-    print(f"Baseline failure rate : {baseline_failure_rate*100:.1f}%")
-    print(f"Baseline quality pass : {baseline_quality_pass*100:.1f}%")
+    print(f"Baseline failure rate : {baseline_failure_rate * 100:.1f}%")
+    print(f"Baseline quality pass : {baseline_quality_pass * 100:.1f}%")
     print()
 
     corrected_dir.mkdir(parents=True, exist_ok=True)
@@ -269,8 +260,7 @@ def run_correction_phase(
         valid_results_corrected, _ = run_validation_phase(gen_results, iter_dir)
         if not valid_results_corrected:
             raise RuntimeError(
-                f"No valid Q&A pairs generated in corrected run (iteration {iteration}). "
-                "Check prompts and LLM output."
+                f"No valid Q&A pairs generated in corrected run (iteration {iteration}). Check prompts and LLM output."
             )
 
         print(f"\n--- Phase 4 (corrected, iter {iteration}): Failure Labeling ---")
@@ -287,14 +277,12 @@ def run_correction_phase(
         corrected_failure_rate = float(corrected_fdf["overall_failure"].mean())
         corrected_quality_pass = float(corrected_qdf["overall_quality_pass"].mean())
         improvement_pct = (
-            (baseline_failure_rate - corrected_failure_rate) / baseline_failure_rate * 100
-            if baseline_failure_rate > 0
-            else 0.0
+            (baseline_failure_rate - corrected_failure_rate) / baseline_failure_rate * 100 if baseline_failure_rate > 0 else 0.0
         )
 
         print(f"\n  iter {iteration} results:")
-        print(f"    Failure rate : {corrected_failure_rate*100:.1f}% (target ≤ {CORRECTION_TARGET_FAILURE_RATE*100:.0f}%)")
-        print(f"    Quality pass : {corrected_quality_pass*100:.1f}% (target ≥ {CORRECTION_TARGET_QUALITY_PASS*100:.0f}%)")
+        print(f"    Failure rate : {corrected_failure_rate * 100:.1f}% (target ≤ {CORRECTION_TARGET_FAILURE_RATE * 100:.0f}%)")
+        print(f"    Quality pass : {corrected_quality_pass * 100:.1f}% (target ≥ {CORRECTION_TARGET_QUALITY_PASS * 100:.0f}%)")
         print(f"    Improvement  : {improvement_pct:.1f}% (target ≥ {CORRECTION_TARGET_IMPROVEMENT:.0f}%)")
 
         all_targets_met = (
@@ -303,11 +291,7 @@ def run_correction_phase(
             and improvement_pct >= CORRECTION_TARGET_IMPROVEMENT
         )
 
-        per_mode_rates = {
-            m: float(corrected_fdf[m].mean())
-            for m in FAILURE_MODE_NAMES
-            if m in corrected_fdf.columns
-        }
+        per_mode_rates = {m: float(corrected_fdf[m].mean()) for m in FAILURE_MODE_NAMES if m in corrected_fdf.columns}
         log_iteration(
             log_path=corrected_dir / "iteration_log.json",
             iteration=iteration,
@@ -332,8 +316,10 @@ def run_correction_phase(
     diversity_score = _compute_diversity_score(valid_results_corrected)
     if diversity_score < 1.0:
         near_dup_pct = (1.0 - diversity_score) * 100
-        print(f"\n  WARNING: {near_dup_pct:.1f}% of answer pairs are near-duplicates (Jaccard > {_JACCARD_SIMILARITY_THRESHOLD}). "
-              "Consider increasing prompt temperature or adding diversity instructions.")
+        print(
+            f"\n  WARNING: {near_dup_pct:.1f}% of answer pairs are near-duplicates (Jaccard > {_JACCARD_SIMILARITY_THRESHOLD}). "
+            "Consider increasing prompt temperature or adding diversity instructions."
+        )
 
     per_mode_delta = {
         mode: round(float(baseline_fdf[mode].mean()) - float(corrected_fdf[mode].mean()), 4)
@@ -366,21 +352,21 @@ def run_correction_phase(
     print("\n" + "=" * 50)
     print("BEFORE / AFTER COMPARISON")
     print("=" * 50)
-    print(f"Baseline failure rate  : {baseline_failure_rate*100:.1f}%")
-    print(f"Corrected failure rate : {corrected_failure_rate*100:.1f}%  (target ≤ {CORRECTION_TARGET_FAILURE_RATE*100:.0f}%)")
+    print(f"Baseline failure rate  : {baseline_failure_rate * 100:.1f}%")
+    print(f"Corrected failure rate : {corrected_failure_rate * 100:.1f}%  (target ≤ {CORRECTION_TARGET_FAILURE_RATE * 100:.0f}%)")
     print(f"Improvement            : {improvement_pct:.1f}%  (target ≥ {CORRECTION_TARGET_IMPROVEMENT:.0f}%)")
     print(f"Target met             : {'YES ✓' if report.target_met else 'NO ✗'}")
-    print(f"Baseline quality pass  : {baseline_quality_pass*100:.1f}%")
-    print(f"Corrected quality pass : {corrected_quality_pass*100:.1f}%  (target ≥ {CORRECTION_TARGET_QUALITY_PASS*100:.0f}%)")
+    print(f"Baseline quality pass  : {baseline_quality_pass * 100:.1f}%")
+    print(f"Corrected quality pass : {corrected_quality_pass * 100:.1f}%  (target ≥ {CORRECTION_TARGET_QUALITY_PASS * 100:.0f}%)")
     print(f"Iterations run         : {iteration} / {max_iterations}")
     print(f"Diversity score        : {diversity_score:.2f}  (1.0 = fully diverse)")
     print("\nPer-mode improvement (positive = fewer failures):")
     for mode, delta in per_mode_delta.items():
         arrow = "↓" if delta > 0 else ("→" if delta == 0 else "↑")
-        print(f"  {arrow} {mode.replace('_', ' ').title()}: {delta*100:+.1f}pp")
+        print(f"  {arrow} {mode.replace('_', ' ').title()}: {delta * 100:+.1f}pp")
     print("\nPer-dim quality delta (positive = more passing):")
     for dim, delta in per_dim_quality_delta.items():
         arrow = "↑" if delta > 0 else ("→" if delta == 0 else "↓")
-        print(f"  {arrow} {dim.replace('_', ' ').title()}: {delta*100:+.1f}pp")
+        print(f"  {arrow} {dim.replace('_', ' ').title()}: {delta * 100:+.1f}pp")
     print(f"\nSaved → {report_path}")
     return report

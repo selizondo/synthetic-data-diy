@@ -22,8 +22,9 @@ import seaborn as sns
 
 matplotlib.use("Agg")  # non-interactive backend
 
-from schema import AnalysisSummary, FAILURE_MODE_FIELDS as FAILURE_MODE_NAMES
 from phase5_quality_eval import QUALITY_DIMENSIONS
+from schema import FAILURE_MODE_FIELDS as FAILURE_MODE_NAMES
+from schema import AnalysisSummary
 
 QUALITY_DIM_NAMES = [d.name for d in QUALITY_DIMENSIONS]
 REPAIR_CATEGORIES = [
@@ -112,10 +113,22 @@ class FailureAnalyzer:
         x = range(len(FAILURE_MODE_NAMES))
         labels = [_label(m) for m in FAILURE_MODE_NAMES]
 
-        ax.bar([i - 0.2 for i in x], baseline_rates, width=0.4, label="Baseline", color="#e74c3c")
+        ax.bar(
+            [i - 0.2 for i in x],
+            baseline_rates,
+            width=0.4,
+            label="Baseline",
+            color="#e74c3c",
+        )
         if corrected_df is not None and not corrected_df.empty:
             corrected_rates = corrected_df[FAILURE_MODE_NAMES].mean()
-            ax.bar([i + 0.2 for i in x], corrected_rates, width=0.4, label="Corrected", color="#2ecc71")
+            ax.bar(
+                [i + 0.2 for i in x],
+                corrected_rates,
+                width=0.4,
+                label="Corrected",
+                color="#2ecc71",
+            )
 
         ax.set_title("Failure Mode Rates: Before vs After Correction", fontsize=13)
         ax.set_xticks(list(x))
@@ -142,7 +155,14 @@ class FailureAnalyzer:
             color=["#2ecc71" if pass_rates[n] >= thresholds[n] else "#e74c3c" for n in QUALITY_DIM_NAMES],
         )
         for i, name in enumerate(QUALITY_DIM_NAMES):
-            ax.hlines(thresholds[name], i - 0.4, i + 0.4, colors="navy", linestyles="--", linewidth=1.2)
+            ax.hlines(
+                thresholds[name],
+                i - 0.4,
+                i + 0.4,
+                colors="navy",
+                linestyles="--",
+                linewidth=1.2,
+            )
 
         ax.set_title("Quality Dimension Pass Rates (green = meets threshold)", fontsize=13)
         ax.set_xticks(range(len(QUALITY_DIM_NAMES)))
@@ -168,13 +188,22 @@ class FailureAnalyzer:
 
         fig, ax = plt.subplots(figsize=(10, 5))
         x = range(len(QUALITY_DIM_NAMES))
-        ax.bar([i - 0.2 for i in x], generated_rates, width=0.4, label="Generated", color="#3498db")
+        ax.bar(
+            [i - 0.2 for i in x],
+            generated_rates,
+            width=0.4,
+            label="Generated",
+            color="#3498db",
+        )
         if benchmark_df is not None and not benchmark_df.empty:
-            bench_vals = [
-                float(benchmark_df[n].mean()) if n in benchmark_df.columns else 0.0
-                for n in QUALITY_DIM_NAMES
-            ]
-            ax.bar([i + 0.2 for i in x], bench_vals, width=0.4, label="Benchmark", color="#f39c12")
+            bench_vals = [float(benchmark_df[n].mean()) if n in benchmark_df.columns else 0.0 for n in QUALITY_DIM_NAMES]
+            ax.bar(
+                [i + 0.2 for i in x],
+                bench_vals,
+                width=0.4,
+                label="Benchmark",
+                color="#f39c12",
+            )
 
         ax.set_title("Generated vs Benchmark Quality Dimensions", fontsize=13)
         ax.set_xticks(list(x))
@@ -224,8 +253,7 @@ class FailureAnalyzer:
     def build_summary(self, benchmark_df: pd.DataFrame | None = None) -> AnalysisSummary:
         failure_rates_by_mode = {m: float(self.fdf[m].mean()) for m in FAILURE_MODE_NAMES if m in self.fdf.columns}
         failure_rates_by_cat = {
-            cat: float(self.fdf[self.fdf["category"] == cat]["overall_failure"].mean())
-            for cat in self.fdf["category"].unique()
+            cat: float(self.fdf[self.fdf["category"] == cat]["overall_failure"].mean()) for cat in self.fdf["category"].unique()
         }
         quality_rates = {d.name: float(self.qdf[d.name].mean()) for d in QUALITY_DIMENSIONS if d.name in self.qdf.columns}
         thresholds_met = {d.name: quality_rates.get(d.name, 0) >= d.threshold for d in QUALITY_DIMENSIONS}
@@ -238,7 +266,10 @@ class FailureAnalyzer:
             bench_pass_rate = float(benchmark_df["overall_quality_pass"].mean())
             overall_benchmark_gap = round(bench_pass_rate - generated_pass_rate, 4)
             benchmark_dimension_gaps = {
-                d.name: round(float(benchmark_df[d.name].mean()) - quality_rates.get(d.name, 0.0), 4)
+                d.name: round(
+                    float(benchmark_df[d.name].mean()) - quality_rates.get(d.name, 0.0),
+                    4,
+                )
                 for d in QUALITY_DIMENSIONS
                 if d.name in benchmark_df.columns
             }
@@ -256,7 +287,6 @@ class FailureAnalyzer:
             benchmark_dimension_gaps=benchmark_dimension_gaps,
         )
 
-
     # ------------------------------------------------------------------
     # HTML summary page: self-contained, base64-embedded charts
     # ------------------------------------------------------------------
@@ -273,7 +303,10 @@ class FailureAnalyzer:
         charts = [
             ("failure_heatmap.png", "Failure Mode Heatmap"),
             ("failure_rates_by_category.png", "Failure Rates by Category"),
-            ("failure_mode_trends.png", "Failure Mode Trends: Before vs After Correction"),
+            (
+                "failure_mode_trends.png",
+                "Failure Mode Trends: Before vs After Correction",
+            ),
             ("quality_dimensions.png", "Quality Dimension Pass Rates"),
             ("benchmark_comparison.png", "Generated vs Benchmark Quality"),
             ("failure_correlations.png", "Failure Mode Correlations"),
@@ -291,9 +324,9 @@ class FailureAnalyzer:
             low = min(mode_rates, key=mode_rates.__getitem__)
             n_any = int((self.fdf.get("overall_failure", pd.Series(dtype=int)) == 1).sum())
             return [
-                f"Most prevalent failure mode: <strong>{_label(top)}</strong> at {mode_rates[top]*100:.1f}%.",
-                f"{n_any} of {len(self.fdf)} samples ({n_any/len(self.fdf)*100:.1f}%) have at least one failure.",
-                f"Least common failure mode: <strong>{_label(low)}</strong> at {mode_rates[low]*100:.1f}%.",
+                f"Most prevalent failure mode: <strong>{_label(top)}</strong> at {mode_rates[top] * 100:.1f}%.",
+                f"{n_any} of {len(self.fdf)} samples ({n_any / len(self.fdf) * 100:.1f}%) have at least one failure.",
+                f"Least common failure mode: <strong>{_label(low)}</strong> at {mode_rates[low] * 100:.1f}%.",
             ]
 
         def _obs_by_category() -> list[str]:
@@ -302,19 +335,19 @@ class FailureAnalyzer:
             cat_rates = self.fdf.groupby("category")["overall_failure"].mean()
             worst, best = cat_rates.idxmax(), cat_rates.idxmin()
             obs = [
-                f"<strong>{_label(worst)}</strong> has the highest failure rate ({cat_rates[worst]*100:.1f}%).",
-                f"<strong>{_label(best)}</strong> has the lowest failure rate ({cat_rates[best]*100:.1f}%).",
+                f"<strong>{_label(worst)}</strong> has the highest failure rate ({cat_rates[worst] * 100:.1f}%).",
+                f"<strong>{_label(best)}</strong> has the lowest failure rate ({cat_rates[best] * 100:.1f}%).",
             ]
             worst_cat_df = self.fdf[self.fdf["category"] == worst]
             mode_rates = {m: float(worst_cat_df[m].mean()) for m in FAILURE_MODE_NAMES if m in worst_cat_df.columns}
             if mode_rates:
                 top = max(mode_rates, key=mode_rates.__getitem__)
-                obs.append(f"Dominant failure in {_label(worst)}: <strong>{_label(top)}</strong> ({mode_rates[top]*100:.1f}%).")
+                obs.append(f"Dominant failure in {_label(worst)}: <strong>{_label(top)}</strong> ({mode_rates[top] * 100:.1f}%).")
             return obs
 
         def _obs_trends() -> list[str]:
             rate = float(self.fdf["overall_failure"].mean()) if "overall_failure" in self.fdf.columns else 0.0
-            obs = [f"Baseline overall failure rate: <strong>{rate*100:.1f}%</strong>."]
+            obs = [f"Baseline overall failure rate: <strong>{rate * 100:.1f}%</strong>."]
             if rate <= 0.15:
                 obs.append("Rate is at or below the Phase 7 stopping threshold (15%) — correction may not be needed.")
             elif rate <= 0.30:
@@ -332,13 +365,13 @@ class FailureAnalyzer:
             passed = [n for n in pass_rates if pass_rates[n] >= thresholds.get(n, 0.8)]
             failed = [n for n in pass_rates if pass_rates[n] < thresholds.get(n, 0.8)]
             overall_qp = float(self.qdf["overall_quality_pass"].mean()) if "overall_quality_pass" in self.qdf.columns else 0.0
-            obs = [f"Overall quality pass rate: <strong>{overall_qp*100:.1f}%</strong> (Phase 7 target ≥80%)."]
+            obs = [f"Overall quality pass rate: <strong>{overall_qp * 100:.1f}%</strong> (Phase 7 target ≥80%)."]
             if passed:
                 obs.append(f"{len(passed)} dimension(s) meet threshold: {', '.join(_label(n) for n in passed)}.")
             if failed:
                 worst_dim = min(failed, key=lambda n: pass_rates[n])
                 obs.append(f"Below threshold: {', '.join('<strong>' + _label(n) + '</strong>' for n in failed)}.")
-                obs.append(f"Weakest dimension: <strong>{_label(worst_dim)}</strong> at {pass_rates[worst_dim]*100:.1f}%.")
+                obs.append(f"Weakest dimension: <strong>{_label(worst_dim)}</strong> at {pass_rates[worst_dim] * 100:.1f}%.")
             return obs
 
         def _obs_benchmark() -> list[str]:
@@ -346,13 +379,21 @@ class FailureAnalyzer:
                 return ["Benchmark data not available — run Phase 3 first to enable gap analysis."]
             gap = summary.overall_benchmark_gap
             obs = [
-                (f"Benchmark leads by <strong>{gap*100:.1f}pp</strong> on overall quality pass rate." if gap > 0
-                 else f"Generated data leads benchmark by <strong>{abs(gap)*100:.1f}pp</strong>."),
+                (
+                    f"Benchmark leads by <strong>{gap * 100:.1f}pp</strong> on overall quality pass rate."
+                    if gap > 0
+                    else f"Generated data leads benchmark by <strong>{abs(gap) * 100:.1f}pp</strong>."
+                ),
             ]
             if summary.benchmark_dimension_gaps:
-                largest = max(summary.benchmark_dimension_gaps, key=lambda k: abs(summary.benchmark_dimension_gaps[k]))
+                largest = max(
+                    summary.benchmark_dimension_gaps,
+                    key=lambda k: abs(summary.benchmark_dimension_gaps[k]),
+                )
                 gv = summary.benchmark_dimension_gaps[largest]
-                obs.append(f"Largest gap: <strong>{_label(largest)}</strong> ({gv*100:+.1f}pp, benchmark {'leads' if gv > 0 else 'trails'}).")
+                obs.append(
+                    f"Largest gap: <strong>{_label(largest)}</strong> ({gv * 100:+.1f}pp, benchmark {'leads' if gv > 0 else 'trails'})."
+                )
             if gap <= 0:
                 obs.append("Generated data matches or exceeds benchmark quality.")
             elif gap <= 0.1:
@@ -368,22 +409,33 @@ class FailureAnalyzer:
             corr = self.fdf[avail].corr()
             highest, pair = 0.0, ("", "")
             for i, m1 in enumerate(avail):
-                for m2 in avail[i + 1:]:
+                for m2 in avail[i + 1 :]:
                     v = corr.loc[m1, m2]
                     if abs(v) > abs(highest):
                         highest, pair = v, (m1, m2)
             obs = []
             if pair[0]:
                 direction = "positive" if highest > 0 else "negative"
-                obs.append(f"Highest correlation: <strong>{_label(pair[0])}</strong> &amp; <strong>{_label(pair[1])}</strong> ({highest:+.2f}, {direction}).")
+                obs.append(
+                    f"Highest correlation: <strong>{_label(pair[0])}</strong> &amp; <strong>{_label(pair[1])}</strong> ({highest:+.2f}, {direction})."
+                )
                 if highest > 0.5:
-                    obs.append("Strong positive correlation — these modes likely share a root cause; fixing one may fix the other.")
+                    obs.append(
+                        "Strong positive correlation — these modes likely share a root cause; fixing one may fix the other."
+                    )
                 elif highest < -0.3:
                     obs.append("Negative correlation — improvements in one mode may coincide with regressions in the other.")
             obs.append("Modes near zero correlation are largely independent and must be addressed separately.")
             return obs
 
-        all_obs = [_obs_heatmap(), _obs_by_category(), _obs_trends(), _obs_quality(), _obs_benchmark(), _obs_correlations()]
+        all_obs = [
+            _obs_heatmap(),
+            _obs_by_category(),
+            _obs_trends(),
+            _obs_quality(),
+            _obs_benchmark(),
+            _obs_correlations(),
+        ]
 
         def _metric_card(title: str, value: str, color: str) -> str:
             return (
@@ -394,20 +446,35 @@ class FailureAnalyzer:
 
         f_color = "#e74c3c" if summary.overall_failure_rate > 0.15 else "#2ecc71"
         q_color = "#2ecc71" if summary.overall_quality_pass_rate >= 0.80 else "#e74c3c"
-        gap_text = f"{summary.overall_benchmark_gap*100:+.1f}pp" if summary.overall_benchmark_gap is not None else "N/A"
-        cards_html = "".join([
-            _metric_card("Overall Failure Rate", f"{summary.overall_failure_rate*100:.1f}%", f_color),
-            _metric_card("Quality Pass Rate", f"{summary.overall_quality_pass_rate*100:.1f}%", q_color),
-            _metric_card("Problematic Samples", str(len(summary.most_problematic_items)), "#e67e22"),
-            _metric_card("Benchmark Gap", gap_text, "#3498db"),
-        ])
+        gap_text = f"{summary.overall_benchmark_gap * 100:+.1f}pp" if summary.overall_benchmark_gap is not None else "N/A"
+        cards_html = "".join(
+            [
+                _metric_card(
+                    "Overall Failure Rate",
+                    f"{summary.overall_failure_rate * 100:.1f}%",
+                    f_color,
+                ),
+                _metric_card(
+                    "Quality Pass Rate",
+                    f"{summary.overall_quality_pass_rate * 100:.1f}%",
+                    q_color,
+                ),
+                _metric_card(
+                    "Problematic Samples",
+                    str(len(summary.most_problematic_items)),
+                    "#e67e22",
+                ),
+                _metric_card("Benchmark Gap", gap_text, "#3498db"),
+            ]
+        )
 
         sections_html = ""
         for (fname, title), obs_list in zip(charts, all_obs):
             data_uri = _embed(fname)
             img_html = (
                 f'<img src="data:image/png;base64,{data_uri}" alt="{title}" class="chart-img">'
-                if data_uri else '<p class="no-chart">Chart not yet available.</p>'
+                if data_uri
+                else '<p class="no-chart">Chart not yet available.</p>'
             )
             obs_html = "".join(f"<li>{o}</li>" for o in obs_list)
             sections_html += (
@@ -418,6 +485,7 @@ class FailureAnalyzer:
         # ── Ph7 before/after section ─────────────────────────────────────────
         ph7_html = ""
         if ph7_report:
+
             def _arrow_fail(delta: float) -> str:
                 return "↓" if delta > 0 else ("→" if delta == 0 else "↑")
 
@@ -441,24 +509,23 @@ class FailureAnalyzer:
             cqp = ph7_report.get("corrected_quality_pass_rate", 0) * 100
             imp = ph7_report.get("improvement_pct", 0)
 
-            overview_rows = "".join([
-                f"<tr><td>Failure Rate</td><td>{bfr:.1f}%</td><td>{cfr:.1f}%</td>"
-                f'<td style="color:{_color_fail(bfr-cfr)}">{_arrow_fail(bfr-cfr)} {abs(bfr-cfr):.1f}pp</td></tr>',
-                f"<tr><td>Quality Pass</td><td>{bqp:.1f}%</td><td>{cqp:.1f}%</td>"
-                f'<td style="color:{_color_qual(cqp-bqp)}">{_arrow_qual(cqp-bqp)} {abs(cqp-bqp):.1f}pp</td></tr>',
-                f"<tr><td>Improvement</td><td>—</td><td>—</td>"
-                f'<td style="color:{_color_fail(imp)}">{imp:+.1f}%</td></tr>',
-            ])
+            overview_rows = "".join(
+                [
+                    f"<tr><td>Failure Rate</td><td>{bfr:.1f}%</td><td>{cfr:.1f}%</td>"
+                    f'<td style="color:{_color_fail(bfr - cfr)}">{_arrow_fail(bfr - cfr)} {abs(bfr - cfr):.1f}pp</td></tr>',
+                    f"<tr><td>Quality Pass</td><td>{bqp:.1f}%</td><td>{cqp:.1f}%</td>"
+                    f'<td style="color:{_color_qual(cqp - bqp)}">{_arrow_qual(cqp - bqp)} {abs(cqp - bqp):.1f}pp</td></tr>',
+                    f'<tr><td>Improvement</td><td>—</td><td>—</td><td style="color:{_color_fail(imp)}">{imp:+.1f}%</td></tr>',
+                ]
+            )
 
             mode_rows = "".join(
-                f"<tr><td>{_label(m)}</td>"
-                f'<td style="color:{_color_fail(d)}">{_arrow_fail(d)} {d*100:+.1f}pp</td></tr>'
+                f'<tr><td>{_label(m)}</td><td style="color:{_color_fail(d)}">{_arrow_fail(d)} {d * 100:+.1f}pp</td></tr>'
                 for m, d in ph7_report.get("per_mode_delta", {}).items()
             )
 
             dim_rows = "".join(
-                f"<tr><td>{_label(d)}</td>"
-                f'<td style="color:{_color_qual(v)}">{_arrow_qual(v)} {v*100:+.1f}pp</td></tr>'
+                f'<tr><td>{_label(d)}</td><td style="color:{_color_qual(v)}">{_arrow_qual(v)} {v * 100:+.1f}pp</td></tr>'
                 for d, v in ph7_report.get("per_dim_quality_delta", {}).items()
             )
 
@@ -472,16 +539,20 @@ class FailureAnalyzer:
                     met = "✓" if m.get("targets_met") else "✗"
                     met_color = "#2ecc71" if m.get("targets_met") else "#e74c3c"
                     iter_rows += (
-                        f"<tr><td>{entry.get('iteration','?')}</td>"
+                        f"<tr><td>{entry.get('iteration', '?')}</td>"
                         f"<td>{fr:.1f}%</td><td>{qp:.1f}%</td><td>{ip:+.1f}%</td>"
                         f'<td style="color:{met_color};font-weight:700">{met}</td></tr>'
                     )
 
             iter_table = (
-                f"<h3>Iteration Log</h3>"
-                f"<table><tr><th>Iter</th><th>Failure Rate</th><th>Quality Pass</th>"
-                f"<th>Improvement</th><th>Targets Met</th></tr>{iter_rows}</table>"
-            ) if iter_rows else ""
+                (
+                    f"<h3>Iteration Log</h3>"
+                    f"<table><tr><th>Iter</th><th>Failure Rate</th><th>Quality Pass</th>"
+                    f"<th>Improvement</th><th>Targets Met</th></tr>{iter_rows}</table>"
+                )
+                if iter_rows
+                else ""
+            )
 
             ph7_html = f"""
 <div class="chart-section ph7-section">
@@ -605,7 +676,13 @@ def plot_strategy_comparison(
     fig, ax = plt.subplots(figsize=(12, 5))
     for i, label in enumerate(labels):
         offsets = [xi + (i - n_strategies / 2 + 0.5) * width for xi in x]
-        ax.bar(offsets, strategy_rates[label], width=width, label=label, color=colours[i % len(colours)])
+        ax.bar(
+            offsets,
+            strategy_rates[label],
+            width=width,
+            label=label,
+            color=colours[i % len(colours)],
+        )
 
     ax.set_title("Quality Pass Rate by Prompt Strategy", fontsize=13)
     ax.set_xticks(list(x))
@@ -647,7 +724,13 @@ def plot_strategy_failure_comparison(
     fig, ax = plt.subplots(figsize=(12, 5))
     for i, label in enumerate(labels):
         offsets = [xi + (i - n_strategies / 2 + 0.5) * width for xi in x]
-        ax.bar(offsets, strategy_failure[label], width=width, label=label, color=colours[i % len(colours)])
+        ax.bar(
+            offsets,
+            strategy_failure[label],
+            width=width,
+            label=label,
+            color=colours[i % len(colours)],
+        )
 
     ax.set_title("Failure Mode Rates by Prompt Strategy", fontsize=13)
     ax.set_xticks(list(x))
@@ -673,11 +756,13 @@ def run_multi_batch_comparison(
     Saves to base_output_dir/_comparison/.
     Returns a summary dict with per-batch stats.
     """
-    batch_dirs = sorted([
-        d for d in base_output_dir.iterdir()
-        if d.is_dir() and not d.name.startswith("_")
-        and (labels is None or d.name in labels)
-    ])
+    batch_dirs = sorted(
+        [
+            d
+            for d in base_output_dir.iterdir()
+            if d.is_dir() and not d.name.startswith("_") and (labels is None or d.name in labels)
+        ]
+    )
     if not batch_dirs:
         print("No batch directories found.")
         return {}
@@ -715,10 +800,10 @@ def run_multi_batch_comparison(
     print("\nCross-batch summary:")
     print(f"  {'Batch':<30} {'Quality%':>9}  {'Failure%':>9}  {'N':>4}  Clean")
     for label, e in summary.items():
-        q = f"{e['quality_pass_rate']*100:.1f}%" if e.get("quality_pass_rate") is not None else "  N/A  "
-        f = f"{e['failure_rate']*100:.1f}%" if "failure_rate" in e else "  N/A"
+        q = f"{e['quality_pass_rate'] * 100:.1f}%" if e.get("quality_pass_rate") is not None else "  N/A  "
+        f = f"{e['failure_rate'] * 100:.1f}%" if "failure_rate" in e else "  N/A"
         n = e.get("n_quality", e.get("n_failure", "?"))
-        clean = "✓" if e.get("quality_data_clean") else "✗"
+        clean = "✓" if e.get("quality_data_clean") else "✗"  # type: ignore[assignment]
         print(f"  {label:<30} {q:>9}  {f:>9}  {n:>4}  {clean}")
 
     return summary
@@ -783,15 +868,16 @@ def run_analysis_phase(
             iteration_log = json.loads(il_path.read_text())
 
     analyzer.generate_summary_page(
-        output_dir, summary,
+        output_dir,
+        summary,
         batch_label=output_dir.name,
         ph7_report=ph7_report,
         iteration_log=iteration_log,
     )
 
-    print(f"\nAnalysis summary:")
-    print(f"  Overall failure rate : {summary.overall_failure_rate*100:.1f}%")
-    print(f"  Overall quality pass : {summary.overall_quality_pass_rate*100:.1f}%")
+    print("\nAnalysis summary:")
+    print(f"  Overall failure rate : {summary.overall_failure_rate * 100:.1f}%")
+    print(f"  Overall quality pass : {summary.overall_quality_pass_rate * 100:.1f}%")
     print(f"  Problematic items    : {len(summary.most_problematic_items)} (≥3 failures)")
     dims_not_met = [k for k, v in summary.thresholds_met.items() if not v]
     if dims_not_met:
@@ -799,5 +885,5 @@ def run_analysis_phase(
     if summary.overall_benchmark_gap is not None:
         gap = summary.overall_benchmark_gap
         direction = "benchmark leads" if gap > 0 else "generated leads"
-        print(f"  Benchmark gap (overall_quality_pass): {gap*100:+.1f}pp ({direction})")
+        print(f"  Benchmark gap (overall_quality_pass): {gap * 100:+.1f}pp ({direction})")
     return summary

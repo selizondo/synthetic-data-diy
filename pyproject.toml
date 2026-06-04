@@ -7,7 +7,7 @@ name = "synthetic-data-diy"
 version = "0.1.0"
 description = "Synthetic data pipeline for DIY repair Q&A with human+LLM judge calibration"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "llm-utils @ git+https://github.com/selizondo/llm-utils.git",
     "openai>=1.0.0",
@@ -27,8 +27,23 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "pytest-cov"]
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.ruff]
+line-length = 130
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/main.py" = ["E501"]
+"src/phase6_analysis.py" = ["E501"]
+"src/phase7_correction.py" = ["E501"]
+"tests/test_schema.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

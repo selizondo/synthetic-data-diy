@@ -24,12 +24,14 @@ DEFAULT_QUALITY_DIMS_DIR = Path(__file__).parent / "quality_dimensions"
 @dataclass
 class QualityDimension:
     name: str
-    label: str        # human-readable label from spec
+    label: str  # human-readable label from spec
     threshold: float  # required pass rate
     prompt_template: str
 
 
-def load_quality_dimensions(config_dir: Path = DEFAULT_QUALITY_DIMS_DIR) -> list[QualityDimension]:
+def load_quality_dimensions(
+    config_dir: Path = DEFAULT_QUALITY_DIMS_DIR,
+) -> list[QualityDimension]:
     """Load all quality dimension definitions from YAML files in config_dir.
 
     Each file must have: name, label, threshold, prompt_template.
@@ -51,12 +53,14 @@ def load_quality_dimensions(config_dir: Path = DEFAULT_QUALITY_DIMS_DIR) -> list
         missing = [k for k in ("name", "label", "threshold", "prompt_template") if k not in data]
         if missing:
             raise ValueError(f"{path.name} is missing required keys: {missing}")
-        dims.append(QualityDimension(
-            name=data["name"],
-            label=data["label"],
-            threshold=float(data["threshold"]),
-            prompt_template=data["prompt_template"],
-        ))
+        dims.append(
+            QualityDimension(
+                name=data["name"],
+                label=data["label"],
+                threshold=float(data["threshold"]),
+                prompt_template=data["prompt_template"],
+            )
+        )
 
     return dims
 
@@ -99,7 +103,6 @@ class QualityEvaluator:
         )
 
 
-
 def run_quality_eval_phase(
     valid_results: list[ValidatedResult],
     judge_model: str,
@@ -109,25 +112,29 @@ def run_quality_eval_phase(
     eval_results: list[QualityEvalResult] = []
 
     for i, result in enumerate(valid_results):
-        print(f"  [{i+1}/{len(valid_results)}] Evaluating {result.trace_id[:8]}... ", end="", flush=True)
+        print(
+            f"  [{i + 1}/{len(valid_results)}] Evaluating {result.trace_id[:8]}... ",
+            end="",
+            flush=True,
+        )
         eval_result = evaluator.evaluate(result)
         eval_results.append(eval_result)
         dims_failed = [d.name for d in QUALITY_DIMENSIONS if getattr(eval_result, d.name) == 0]
         status = "FAIL: " + ", ".join(dims_failed) if dims_failed else f"PASS (all {len(QUALITY_DIMENSIONS)})"
         running_rate = sum(r.overall_quality_pass for r in eval_results) / len(eval_results)
-        print(f"{status}  ({running_rate*100:.0f}% pass so far)")
+        print(f"{status}  ({running_rate * 100:.0f}% pass so far)")
 
     rows = [r.model_dump() for r in eval_results]
     df = pd.DataFrame(rows)
 
     pass_rate = df["overall_quality_pass"].mean()
-    print(f"\nQuality evaluation complete: {pass_rate*100:.1f}% overall quality pass rate")
+    print(f"\nQuality evaluation complete: {pass_rate * 100:.1f}% overall quality pass rate")
 
     print("\nPer-dimension pass rates:")
     for dim in QUALITY_DIMENSIONS:
         rate = df[dim.name].mean()
         met = "✓" if rate >= dim.threshold else "✗"
-        print(f"  {met} {dim.label}: {rate*100:.1f}% (threshold: {dim.threshold*100:.0f}%)")
+        print(f"  {met} {dim.label}: {rate * 100:.1f}% (threshold: {dim.threshold * 100:.0f}%)")
 
     df.to_csv(output_dir / "quality_eval_data.csv", index=False)
     df.to_json(output_dir / "quality_eval_data.json", orient="records", indent=2)

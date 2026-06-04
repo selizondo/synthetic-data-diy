@@ -20,8 +20,8 @@ from datetime import datetime, timedelta, timezone
 import requests
 from dotenv import load_dotenv
 
-
 # ── HTTP helpers ──────────────────────────────────────────────────────────────
+
 
 def _get(auth: tuple, host: str, path: str, params: dict | None = None, no_auth: bool = False) -> dict:
     kwargs: dict = {"params": params or {}, "timeout": 10}
@@ -51,6 +51,7 @@ def _fetch_all(auth: tuple, host: str, path: str, params: dict | None = None, ma
 
 # ── Formatting ────────────────────────────────────────────────────────────────
 
+
 def _banner(text: str) -> None:
     line = "=" * 60
     print(f"\n{line}\n{text}\n{line}")
@@ -65,7 +66,7 @@ def _fmt_ms(ms: float | None) -> str:
         return "     —"
     if ms < 1000:
         return f"{ms:>5.0f}ms"
-    return f"{ms/1000:>5.1f}s "
+    return f"{ms / 1000:>5.1f}s "
 
 
 def _fmt_ts(ts: str | None) -> str:
@@ -95,6 +96,7 @@ def _obs_latency_ms(obs: dict) -> float | None:
 
 
 # ── Overview ──────────────────────────────────────────────────────────────────
+
 
 def _overview(auth: tuple, host: str, max_items: int, since: datetime | None) -> None:
     try:
@@ -157,10 +159,11 @@ def _overview(auth: tuple, host: str, max_items: int, since: datetime | None) ->
             f"  {tokens if tokens else '—':>7}  {_fmt_ts(last_ts)}"
         )
 
-    print(f"\n  Run with --session <name> to drill into a specific session.")
+    print("\n  Run with --session <name> to drill into a specific session.")
 
 
 # ── Session detail ────────────────────────────────────────────────────────────
+
 
 def _session_detail(auth: tuple, host: str, session_id: str, max_items: int) -> None:
     traces = _fetch_all(auth, host, "/api/public/traces", {"sessionId": session_id}, max_items)
@@ -174,8 +177,13 @@ def _session_detail(auth: tuple, host: str, session_id: str, max_items: int) -> 
     # Collect all generation observations for these traces
     all_obs: list[dict] = []
     for t in traces:
-        obs = _fetch_all(auth, host, "/api/public/observations",
-                         {"traceId": t["id"], "type": "GENERATION"}, max_items=500)
+        obs = _fetch_all(
+            auth,
+            host,
+            "/api/public/observations",
+            {"traceId": t["id"], "type": "GENERATION"},
+            max_items=500,
+        )
         all_obs.extend(obs)
 
     errors_total = sum(1 for o in all_obs if o.get("level") == "ERROR")
@@ -186,7 +194,7 @@ def _session_detail(auth: tuple, host: str, session_id: str, max_items: int) -> 
     print(f"Generations  : {len(all_obs)}")
     print(f"Errors       : {errors_total}")
     print(f"Total tokens : {tokens_total}")
-    print(f"Avg latency  : {_fmt_ms(sum(lats)/len(lats) if lats else None).strip()}")
+    print(f"Avg latency  : {_fmt_ms(sum(lats) / len(lats) if lats else None).strip()}")
 
     if not all_obs:
         print("\nNo generations recorded. Phase 1 mock runs don't call the LLM so produce no generations.")
@@ -236,7 +244,7 @@ def _session_detail(auth: tuple, host: str, session_id: str, max_items: int) -> 
         total_cats = sum(cats.values())
         for cat, count in sorted(cats.items()):
             bar = "█" * int(count / total_cats * 20)
-            print(f"  {cat:<28} {count:>3} ({count/total_cats*100:.0f}%)  {bar}")
+            print(f"  {cat:<28} {count:>3} ({count / total_cats * 100:.0f}%)  {bar}")
 
     # ── Recent errors ────────────────────────────────────────────────────────
     error_obs = [o for o in all_obs if o.get("level") == "ERROR"]
@@ -251,16 +259,24 @@ def _session_detail(auth: tuple, host: str, session_id: str, max_items: int) -> 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Langfuse dashboard for synthetic_data_diy pipeline")
-    parser.add_argument("--session", type=str, default=None,
-                        help="Drill into a specific session (batch_label)")
-    parser.add_argument("--limit", type=int, default=200,
-                        help="Max items to fetch per resource type (default: 200)")
-    parser.add_argument("--since", type=str, default=None,
-                        help="Filter by recency: 24h, 7d, 30d")
+    parser.add_argument(
+        "--session",
+        type=str,
+        default=None,
+        help="Drill into a specific session (batch_label)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=200,
+        help="Max items to fetch per resource type (default: 200)",
+    )
+    parser.add_argument("--since", type=str, default=None, help="Filter by recency: 24h, 7d, 30d")
     args = parser.parse_args()
 
     pk = os.getenv("LANGFUSE_PUBLIC_KEY", "")

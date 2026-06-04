@@ -5,21 +5,25 @@ into llm_utils calls via the obs_fn hook.
 All retry logic, backoff, and client caching live in llm_utils.client.
 """
 
-from typing import TypeVar, Type
-
-from pydantic import BaseModel
+from typing import Type, TypeVar
 
 from llm_utils.client import (
-    chat_complete,
-    instructor_complete as _instructor_complete,
-    judge_binary as _judge_binary,
-    judge_batch as _judge_batch,
-    DEFAULT_TEMPERATURE,
-    DEFAULT_MAX_TOKENS,
     DEFAULT_MAX_RETRIES,
-    JUDGE_SYSTEM,
-    JUDGE_BATCH_SYSTEM,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_TEMPERATURE,
+    chat_complete,  # noqa: F401 — re-exported for phase3_benchmark.py
 )
+from llm_utils.client import (
+    instructor_complete as _instructor_complete,
+)
+from llm_utils.client import (
+    judge_batch as _judge_batch,
+)
+from llm_utils.client import (
+    judge_binary as _judge_binary,
+)
+from pydantic import BaseModel
+
 from observability import record_llm_generation
 
 T = TypeVar("T", bound=BaseModel)
@@ -31,11 +35,7 @@ def _make_obs_fn(obs_context: dict | None, name: str):
         return None
 
     def obs_fn(*, model, input_messages, output, duration_ms, error=None, extra_attributes=None):
-        output_serialized = (
-            output.model_dump() if hasattr(output, "model_dump")
-            else str(output) if output is not None
-            else None
-        )
+        output_serialized = output.model_dump() if hasattr(output, "model_dump") else str(output) if output is not None else None
         record_llm_generation(
             obs_context=obs_context,
             name=name,
@@ -61,7 +61,9 @@ def instructor_complete(
     name: str = "instructor_complete",
 ) -> T:
     return _instructor_complete(
-        messages, response_model, model,
+        messages,
+        response_model,
+        model,
         temperature=temperature,
         max_tokens=max_tokens,
         max_retries=max_retries,
@@ -77,7 +79,8 @@ def judge_binary(
     name: str = "judge_binary",
 ) -> int:
     return _judge_binary(
-        prompt, model,
+        prompt,
+        model,
         default_on_error=default_on_error,
         obs_fn=_make_obs_fn(obs_context, name),
     )
@@ -92,7 +95,9 @@ def judge_batch(
 ) -> T:
     name = f"phase{obs_context.get('phase', '?')}.judge_batch" if obs_context else "judge_batch"
     return _judge_batch(
-        prompt, response_model, model,
+        prompt,
+        response_model,
+        model,
         max_retries=max_retries,
         obs_fn=_make_obs_fn(obs_context, name),
     )

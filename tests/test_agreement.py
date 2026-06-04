@@ -8,15 +8,16 @@ run_agreement() without hitting disk or requiring output directories.
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from schema import HUMAN_TO_LLM
 from agreement import AGREEMENT_THRESHOLD
-
+from schema import HUMAN_TO_LLM
 
 # ---------------------------------------------------------------------------
 # Agreement computation kernel (extracted for unit testing)
 # ---------------------------------------------------------------------------
+
 
 def compute_agreement(
     human_records: list[dict],
@@ -30,11 +31,7 @@ def compute_agreement(
     """
     llm_by_id = {r["trace_id"]: r for r in llm_records}
 
-    joined = [
-        (h, llm_by_id[h["trace_id"]])
-        for h in human_records
-        if h["trace_id"] in llm_by_id
-    ]
+    joined = [(h, llm_by_id[h["trace_id"]]) for h in human_records if h["trace_id"] in llm_by_id]
 
     if not joined:
         return {}
@@ -42,9 +39,9 @@ def compute_agreement(
     dim_results: dict[str, dict] = {}
     for human_key, llm_key in HUMAN_TO_LLM.items():
         pairs = [
-            (int(h.get(human_key)), int(l.get(llm_key)))
-            for h, l in joined
-            if h.get(human_key) is not None and l.get(llm_key) is not None
+            (int(h.get(human_key)), int(lv.get(llm_key)))
+            for h, lv in joined
+            if h.get(human_key) is not None and lv.get(llm_key) is not None
         ]
         if not pairs:
             continue
@@ -55,10 +52,14 @@ def compute_agreement(
 
         tp = tn = fp = fn = 0
         for hv, lv in pairs:
-            if hv == 1 and lv == 1:   tp += 1
-            elif hv == 0 and lv == 0: tn += 1
-            elif hv == 0 and lv == 1: fp += 1
-            else:                     fn += 1
+            if hv == 1 and lv == 1:
+                tp += 1
+            elif hv == 0 and lv == 0:
+                tn += 1
+            elif hv == 0 and lv == 1:
+                fp += 1
+            else:
+                fn += 1
 
         dim_results[human_key] = {
             "agreement_rate": round(rate, 4),
@@ -78,6 +79,7 @@ def compute_agreement(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _human_record(trace_id: str, **scores) -> dict:
     defaults = {
         "answer_completeness": 1,
@@ -96,7 +98,7 @@ def _llm_record(trace_id: str, **scores) -> dict:
         "answer_completeness": 1,
         "safety_specificity": 1,
         "tool_realism": 1,
-        "appropriate_scope": 1,   # LLM key differs from human key for D4
+        "appropriate_scope": 1,  # LLM key differs from human key for D4
         "context_clarity": 1,
         "tip_usefulness": 1,
     }
@@ -107,6 +109,7 @@ def _llm_record(trace_id: str, **scores) -> dict:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestAgreementRate:
     def test_perfect_agreement_all_ones(self):
@@ -127,29 +130,24 @@ class TestAgreementRate:
 
     def test_80_percent_agreement_meets_threshold(self):
         # 8 agree, 2 disagree on D2
-        human = (
-            [_human_record(f"t{i}", safety_specificity=1) for i in range(8)] +
-            [_human_record(f"t{i+8}", safety_specificity=1) for i in range(2)]
-        )
-        llm = (
-            [_llm_record(f"t{i}", safety_specificity=1) for i in range(8)] +
-            [_llm_record(f"t{i+8}", safety_specificity=0) for i in range(2)]
-        )
+        human = [_human_record(f"t{i}", safety_specificity=1) for i in range(8)] + [
+            _human_record(f"t{i + 8}", safety_specificity=1) for i in range(2)
+        ]
+        llm = [_llm_record(f"t{i}", safety_specificity=1) for i in range(8)] + [
+            _llm_record(f"t{i + 8}", safety_specificity=0) for i in range(2)
+        ]
         result = compute_agreement(human, llm)
         assert result["safety_specificity"]["agreement_rate"] == 0.8
         assert result["safety_specificity"]["meets_threshold"]
 
     def test_79_percent_agreement_below_threshold(self):
-        n = 100
         # 79 agree, 21 disagree
-        human = (
-            [_human_record(f"t{i}", tool_realism=1) for i in range(79)] +
-            [_human_record(f"t{i+79}", tool_realism=1) for i in range(21)]
-        )
-        llm = (
-            [_llm_record(f"t{i}", tool_realism=1) for i in range(79)] +
-            [_llm_record(f"t{i+79}", tool_realism=0) for i in range(21)]
-        )
+        human = [_human_record(f"t{i}", tool_realism=1) for i in range(79)] + [
+            _human_record(f"t{i + 79}", tool_realism=1) for i in range(21)
+        ]
+        llm = [_llm_record(f"t{i}", tool_realism=1) for i in range(79)] + [
+            _llm_record(f"t{i + 79}", tool_realism=0) for i in range(21)
+        ]
         result = compute_agreement(human, llm)
         assert result["tool_realism"]["agreement_rate"] == 0.79
         assert not result["tool_realism"]["meets_threshold"]

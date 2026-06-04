@@ -32,6 +32,7 @@ _LOGS_DIR = Path(__file__).parent / "logs"
 
 # ── Langfuse ──────────────────────────────────────────────────────────────────
 
+
 def flush_langfuse() -> None:
     """Flush any queued Langfuse events. Call once before process exit."""
     lf = get_langfuse()
@@ -52,14 +53,12 @@ def get_langfuse():
 
     pk = os.getenv("LANGFUSE_PUBLIC_KEY", "")
     sk = os.getenv("LANGFUSE_SECRET_KEY", "")
-    if (
-        not pk or pk.startswith("pk-lf-...")
-        or not sk or sk.startswith("sk-lf-...")
-    ):
+    if not pk or pk.startswith("pk-lf-...") or not sk or sk.startswith("sk-lf-..."):
         return None
 
     try:
         from langfuse import Langfuse
+
         _langfuse_client = Langfuse(
             public_key=pk,
             secret_key=sk,
@@ -72,14 +71,19 @@ def get_langfuse():
 
 # ── Logfire ───────────────────────────────────────────────────────────────────
 
+
 def configure_observability(send_to_logfire: bool = False) -> None:
     """Configure Logfire for the pipeline process. Call once at main() startup."""
     try:
-        import logfire
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace import ReadableSpan
-        from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
         from typing import Sequence
+
+        import logfire
+        from opentelemetry.sdk.trace import ReadableSpan
+        from opentelemetry.sdk.trace.export import (
+            SimpleSpanProcessor,
+            SpanExporter,
+            SpanExportResult,
+        )
 
         _LOGS_DIR.mkdir(exist_ok=True)
         _trace_file = _LOGS_DIR / "traces.jsonl"
@@ -93,9 +97,9 @@ def configure_observability(send_to_logfire: bool = False) -> None:
                                 "ts": datetime.now(timezone.utc).isoformat(),
                                 "name": span.name,
                                 "status": span.status.status_code.name,
-                                "duration_ms": round(
-                                    (span.end_time - span.start_time) / 1_000_000, 1
-                                ) if span.end_time and span.start_time else None,
+                                "duration_ms": round((span.end_time - span.start_time) / 1_000_000, 1)
+                                if span.end_time and span.start_time
+                                else None,
                                 "attributes": dict(span.attributes or {}),
                             }
                             f.write(json.dumps(record) + "\n")
@@ -136,6 +140,7 @@ def configure_observability(send_to_logfire: bool = False) -> None:
 
 # ── Per-call recording ────────────────────────────────────────────────────────
 
+
 def record_llm_generation(
     obs_context: dict | None,
     name: str,
@@ -164,6 +169,7 @@ def record_llm_generation(
     # ── Logfire structured log ────────────────────────────────────────────────
     try:
         import logfire
+
         attrs: dict = {
             "phase": phase,
             "trace_id": trace_id,
@@ -199,61 +205,67 @@ def record_llm_generation(
 
         import uuid as _uuid
         from datetime import datetime, timezone
+
+        from langfuse.api.commons.types.observation_level import ObservationLevel
+        from langfuse.api.ingestion.types.create_generation_body import (
+            CreateGenerationBody,
+        )
         from langfuse.api.ingestion.types.ingestion_event import (
-            IngestionEvent_TraceCreate,
             IngestionEvent_GenerationCreate,
+            IngestionEvent_TraceCreate,
         )
         from langfuse.api.ingestion.types.trace_body import TraceBody
-        from langfuse.api.ingestion.types.create_generation_body import CreateGenerationBody
-        from langfuse.api.commons.types.observation_level import ObservationLevel
 
         # v4 requires 32-char lowercase hex IDs (UUID without dashes)
         lf_trace_id = trace_id.replace("-", "") if trace_id else _uuid.uuid4().hex
         lf_gen_id = _uuid.uuid4().hex  # unique per generation event
         from datetime import timedelta
+
         end_time = datetime.now(timezone.utc)
         start_time = end_time - timedelta(milliseconds=duration_ms)
         end_iso = end_time.isoformat()
 
-        lf.api.ingestion.batch(batch=[
-            IngestionEvent_TraceCreate(
-                id=_uuid.uuid4().hex,
-                timestamp=end_iso,
-                body=TraceBody(
-                    id=lf_trace_id,
-                    name=name,
-                    session_id=batch_label or None,
-                    input=input_messages,
-                    output=output,
-                    metadata={
-                        "phase": phase,
-                        "category": category,
-                        "prompt_strategy": strategy,
-                        "batch_label": batch_label,
-                    },
+        lf.api.ingestion.batch(
+            batch=[
+                IngestionEvent_TraceCreate(
+                    id=_uuid.uuid4().hex,
+                    timestamp=end_iso,
+                    body=TraceBody(
+                        id=lf_trace_id,
+                        name=name,
+                        session_id=batch_label or None,
+                        input=input_messages,
+                        output=output,
+                        metadata={
+                            "phase": phase,
+                            "category": category,
+                            "prompt_strategy": strategy,
+                            "batch_label": batch_label,
+                        },
+                    ),
                 ),
-            ),
-            IngestionEvent_GenerationCreate(
-                id=_uuid.uuid4().hex,
-                timestamp=end_iso,
-                body=CreateGenerationBody(
-                    id=lf_gen_id,
-                    trace_id=lf_trace_id,
-                    name=name,
-                    model=model,
-                    input=input_messages,
-                    output=output,
-                    metadata={
-                        "phase": phase,
-                        "duration_ms": round(duration_ms, 1),
-                        **(extra_attributes or {}),
-                    },
-                    level=ObservationLevel.ERROR if error else ObservationLevel.DEFAULT,
-                    status_message=str(error) if error else None,
-                    start_time=start_time,
-                    end_time=end_time,
+                IngestionEvent_GenerationCreate(
+                    id=_uuid.uuid4().hex,
+                    timestamp=end_iso,
+                    body=CreateGenerationBody(
+                        id=lf_gen_id,
+                        trace_id=lf_trace_id,
+                        name=name,
+                        model=model,
+                        input=input_messages,
+                        output=output,
+                        metadata={
+                            "phase": phase,
+                            "duration_ms": round(duration_ms, 1),
+                            **(extra_attributes or {}),
+                        },
+                        level=ObservationLevel.ERROR if error else ObservationLevel.DEFAULT,
+                        status_message=str(error) if error else None,
+                        start_time=start_time,
+                        end_time=end_time,
+                    ),
                 ),
-            ),
-        ])
+            ]
+        )
     except Exception:
         pass

@@ -43,14 +43,10 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
 
     if not human_path.exists():
         raise FileNotFoundError(
-            f"Human labels not found: {human_path}\n"
-            "Run python human_labeler.py --batch-label {batch_label} first."
+            f"Human labels not found: {human_path}\nRun python human_labeler.py --batch-label {{batch_label}} first."
         )
     if not llm_path.exists():
-        raise FileNotFoundError(
-            f"LLM quality eval not found: {llm_path}\n"
-            "Run Phase 5 first."
-        )
+        raise FileNotFoundError(f"LLM quality eval not found: {llm_path}\nRun Phase 5 first.")
 
     human_records: list[dict] = json.loads(human_path.read_text())
     llm_records: list[dict] = json.loads(llm_path.read_text())
@@ -76,15 +72,15 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
     print(f"Human labels     : {len(human_records)} items")
     print(f"LLM quality eval : {len(llm_records)} items")
     print(f"Matched (joined) : {len(joined)} items")
-    print(f"Agreement threshold: {threshold*100:.0f}%\n")
+    print(f"Agreement threshold: {threshold * 100:.0f}%\n")
 
     # Compute per-dimension agreement
     dim_results: dict[str, dict] = {}
     for human_key, llm_key in HUMAN_TO_LLM.items():
         pairs = [
-            (int(h.get(human_key)), int(l.get(llm_key)))
-            for h, l in joined
-            if h.get(human_key) is not None and l.get(llm_key) is not None
+            (int(h.get(human_key)), int(lv.get(llm_key)))
+            for h, lv in joined
+            if h.get(human_key) is not None and lv.get(llm_key) is not None
         ]
 
         if not pairs:
@@ -96,10 +92,14 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
 
         tp = tn = fp = fn = 0
         for hv, lv in pairs:
-            if hv == 1 and lv == 1:   tp += 1
-            elif hv == 0 and lv == 0: tn += 1
-            elif hv == 0 and lv == 1: fp += 1
-            else:                     fn += 1
+            if hv == 1 and lv == 1:
+                tp += 1
+            elif hv == 0 and lv == 0:
+                tn += 1
+            elif hv == 0 and lv == 1:
+                fp += 1
+            else:
+                fn += 1
 
         dim_results[human_key] = {
             "human_key": human_key,
@@ -111,8 +111,8 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
             "meets_threshold": rate >= threshold,
             "true_positive": tp,
             "true_negative": tn,
-            "false_positive": fp,   # LLM says pass, human says fail
-            "false_negative": fn,   # LLM says fail, human says pass
+            "false_positive": fp,  # LLM says pass, human says fail
+            "false_negative": fn,  # LLM says fail, human says pass
         }
 
     # Print table
@@ -124,17 +124,17 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
         if not res["meets_threshold"]:
             all_met = False
         print(
-            f"  {res['label']:<33} {res['agreement_rate']*100:>8.1f}%"
+            f"  {res['label']:<33} {res['agreement_rate'] * 100:>8.1f}%"
             f"  {res['true_positive']:>4} {res['true_negative']:>4}"
             f"  {res['false_positive']:>4} {res['false_negative']:>4}  {status}"
         )
 
     overall_agreement = sum(r["agreement_rate"] for r in dim_results.values()) / len(dim_results)
     print("─" * 75)
-    print(f"  {'Mean agreement':<33} {overall_agreement*100:>8.1f}%")
+    print(f"  {'Mean agreement':<33} {overall_agreement * 100:>8.1f}%")
 
     if all_met:
-        print(f"\n✓ All dimensions meet the {threshold*100:.0f}% agreement threshold — judge is trustworthy.")
+        print(f"\n✓ All dimensions meet the {threshold * 100:.0f}% agreement threshold — judge is trustworthy.")
     else:
         failing = [r["label"] for r in dim_results.values() if not r["meets_threshold"]]
         print(f"\n✗ {len(failing)} dimension(s) below threshold: {', '.join(failing)}")
@@ -159,15 +159,26 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Phase A — compute human/LLM agreement on 6 quality dimensions"
+    parser = argparse.ArgumentParser(description="Phase A — compute human/LLM agreement on 6 quality dimensions")
+    parser.add_argument(
+        "--batch-label",
+        required=True,
+        dest="batch_label",
+        help="Batch label to evaluate (must have human_labels.json and quality_eval_data.json)",
     )
-    parser.add_argument("--batch-label", required=True, dest="batch_label",
-                        help="Batch label to evaluate (must have human_labels.json and quality_eval_data.json)")
-    parser.add_argument("--threshold", type=float, default=AGREEMENT_THRESHOLD,
-                        help=f"Agreement threshold to flag dimensions (default: {AGREEMENT_THRESHOLD})")
-    parser.add_argument("--output-dir", type=str, default="output", dest="output_dir",
-                        help="Base output directory (default: output)")
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=AGREEMENT_THRESHOLD,
+        help=f"Agreement threshold to flag dimensions (default: {AGREEMENT_THRESHOLD})",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="output",
+        dest="output_dir",
+        help="Base output directory (default: output)",
+    )
     args = parser.parse_args()
 
     run_agreement(

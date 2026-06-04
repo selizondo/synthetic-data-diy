@@ -43,10 +43,7 @@ def load_answer_templates(strategy: str = "zero_shot") -> list[dict]:
     strategy_dir = PROMPTS_DIR / strategy
     if not strategy_dir.is_dir():
         available = sorted(d.name for d in PROMPTS_DIR.iterdir() if d.is_dir())
-        raise ValueError(
-            f"Unknown strategy '{strategy}'. "
-            f"Available strategies (subdirs of prompts/): {available}"
-        )
+        raise ValueError(f"Unknown strategy '{strategy}'. Available strategies (subdirs of prompts/): {available}")
 
     # Strategy-specific answer_only dir takes precedence over the base one.
     # This lets CoT and few_shot embed their reasoning scaffold / example in the user prompt.
@@ -77,11 +74,13 @@ def load_answer_templates(strategy: str = "zero_shot") -> list[dict]:
         if "category" not in answer_data:
             raise ValueError(f"answer_only/{answer_path.name} is missing 'category' key")
 
-        templates.append({
-            "category": answer_data["category"],
-            "system": system,
-            "user": answer_data["user"],
-        })
+        templates.append(
+            {
+                "category": answer_data["category"],
+                "system": system,
+                "user": answer_data["user"],
+            }
+        )
 
     return templates
 
@@ -104,10 +103,7 @@ def load_prompt_templates(strategy: str = "zero_shot") -> list[dict]:
     strategy_dir = PROMPTS_DIR / strategy
     if not strategy_dir.is_dir():
         available = sorted(d.name for d in PROMPTS_DIR.iterdir() if d.is_dir())
-        raise ValueError(
-            f"Unknown strategy '{strategy}'. "
-            f"Available strategies (subdirs of prompts/): {available}"
-        )
+        raise ValueError(f"Unknown strategy '{strategy}'. Available strategies (subdirs of prompts/): {available}")
 
     yaml_files = sorted(strategy_dir.glob("*.yaml"))
     if not yaml_files:
@@ -125,10 +121,12 @@ def load_prompt_templates(strategy: str = "zero_shot") -> list[dict]:
         if missing:
             raise ValueError(f"{strategy}/{path.name} is missing keys: {missing}")
 
-        templates.append({
-            "category": data["category"],
-            "system": data["system"],
-            "user": data["user"],
-        })
+        templates.append(
+            {
+                "category": data["category"],
+                "system": data["system"],
+                "user": data["user"],
+            }
+        )
 
     return templates

@@ -8,16 +8,17 @@ _check_category_distribution (≥20% per category).
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from schema import QAPair, ValidatedResult
 from phase2_validation import (
-    _apply_heuristic_gates,
-    _run_dedup,
-    _check_category_distribution,
     _MIN_SAFETY_INFO_LEN,
     _MIN_TIP_LEN,
+    _apply_heuristic_gates,
+    _check_category_distribution,
+    _run_dedup,
 )
+from schema import QAPair, ValidatedResult
 
 
 def _make_qa(**overrides) -> QAPair:
@@ -42,17 +43,14 @@ def _make_qa(**overrides) -> QAPair:
         tips=["Photograph the disassembly order so reassembly is easier and faster"],
     )
     base.update(overrides)
-    return QAPair(**base)
+    return QAPair(**base)  # type: ignore[arg-type]
 
 
 def _make_validated(qa: QAPair, category: str = "plumbing") -> ValidatedResult:
     return ValidatedResult(
         qa_pair=qa,
         category=category,
-        passed_gate=True,
-        gate_failures=[],
         trace_id="trace-001",
-        batch_id="batch-001",
     )
 
 
@@ -126,7 +124,10 @@ class TestHeuristicGates:
 class TestDedup:
     def test_no_duplicates_unchanged(self):
         items = [
-            _make_validated(_make_qa(question="How do I fix a dripping faucet in my kitchen?"), "plumbing"),
+            _make_validated(
+                _make_qa(question="How do I fix a dripping faucet in my kitchen?"),
+                "plumbing",
+            ),
             _make_validated(_make_qa(question="How do I patch a hole in my drywall?"), "drywall"),
         ]
         kept, n_dupes = _run_dedup(items)
@@ -165,25 +166,29 @@ class TestCategoryDistribution:
         return items
 
     def test_uniform_distribution_passes(self):
-        items = self._items_for_categories({
-            "plumbing": 20,
-            "electrical": 20,
-            "drywall": 20,
-            "painting": 20,
-            "flooring": 20,
-        })
+        items = self._items_for_categories(
+            {
+                "plumbing": 20,
+                "electrical": 20,
+                "drywall": 20,
+                "painting": 20,
+                "flooring": 20,
+            }
+        )
         fractions, passes = _check_category_distribution(items)
         assert passes, f"Expected pass, fractions: {fractions}"
         assert all(v >= 0.20 for v in fractions.values())
 
     def test_underrepresented_category_fails(self):
-        items = self._items_for_categories({
-            "plumbing": 30,
-            "electrical": 30,
-            "drywall": 30,
-            "painting": 9,   # 9/100 = 9% — below 20%
-            "flooring": 1,
-        })
+        items = self._items_for_categories(
+            {
+                "plumbing": 30,
+                "electrical": 30,
+                "drywall": 30,
+                "painting": 9,  # 9/100 = 9% — below 20%
+                "flooring": 1,
+            }
+        )
         fractions, passes = _check_category_distribution(items)
         assert not passes
         # at least one category must be below the 20% threshold

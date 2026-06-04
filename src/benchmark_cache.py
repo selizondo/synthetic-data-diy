@@ -33,6 +33,7 @@ _CACHE_SUBDIR = "_benchmark_cache"
 # Cache directory helpers
 # ---------------------------------------------------------------------------
 
+
 def _cache_dir(output_base: Path) -> Path:
     return output_base / _CACHE_SUBDIR
 
@@ -40,6 +41,7 @@ def _cache_dir(output_base: Path) -> Path:
 # ---------------------------------------------------------------------------
 # Low-fidelity cache: raw HF rows
 # ---------------------------------------------------------------------------
+
 
 def _load_or_fetch_raw_rows(output_base: Path) -> list[dict]:
     """Return all rows from the HF training split; cached after the first fetch."""
@@ -52,9 +54,7 @@ def _load_or_fetch_raw_rows(output_base: Path) -> list[dict]:
     try:
         from datasets import load_dataset
     except ImportError:
-        raise ImportError(
-            "Install 'datasets': pip install datasets"
-        )
+        raise ImportError("Install 'datasets': pip install datasets")
 
     print(f"Loading benchmark dataset from HuggingFace: {BENCHMARK_DATASET} ...")
     try:
@@ -79,6 +79,7 @@ def _load_or_fetch_raw_rows(output_base: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 # High-fidelity cache: schema-validated rows (QAPair fields + category)
 # ---------------------------------------------------------------------------
+
 
 def _load_or_build_validated_rows(output_base: Path) -> list[dict]:
     """Return raw rows that pass QAPair.model_validate(); cached after first build."""
@@ -111,6 +112,7 @@ def _load_or_build_validated_rows(output_base: Path) -> list[dict]:
 # Stratified sampling (pure Python, reproducible)
 # ---------------------------------------------------------------------------
 
+
 def _stratified_sample(rows: list[dict], target: int, seed: int) -> list[dict]:
     """Stratified sample from rows preserving category proportions."""
     import random as _rnd
@@ -133,7 +135,7 @@ def _stratified_sample(rows: list[dict], target: int, seed: int) -> list[dict]:
         idxs = list(by_cat[cat])
         rng.shuffle(idxs)
         take = max(1, round(len(idxs) * target / n))
-        selected.extend(idxs[:min(take, len(idxs))])
+        selected.extend(idxs[: min(take, len(idxs))])
 
     selected = selected[:target]
 
@@ -141,7 +143,7 @@ def _stratified_sample(rows: list[dict], target: int, seed: int) -> list[dict]:
     if len(selected) < target:
         extras = list(set(range(n)) - set(selected))
         rng.shuffle(extras)
-        selected.extend(extras[:target - len(selected)])
+        selected.extend(extras[: target - len(selected)])
 
     rng.shuffle(selected)
     return [rows[i] for i in selected]
@@ -150,6 +152,7 @@ def _stratified_sample(rows: list[dict], target: int, seed: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def sample_raw_rows(
     num_samples: int,

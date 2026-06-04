@@ -14,17 +14,15 @@ import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from schema import GenerationResult
 from phase1_generation import DIYDatasetGenerator
-
+from schema import GenerationResult
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_result(category: str = "plumbing") -> GenerationResult:
     return GenerationResult(
@@ -49,6 +47,7 @@ def _make_generator(templates: list[dict]) -> DIYDatasetGenerator:
 # ---------------------------------------------------------------------------
 # on_result callback in generate_batch
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateBatchCallback:
     def test_on_result_fires_once_per_item(self):
@@ -93,10 +92,12 @@ class TestGenerateBatchCallback:
 
     def test_remaining_per_category_respected(self):
         """on_result fires only for items in the remaining schedule."""
-        gen = _make_generator([
-            {"category": "plumbing"},
-            {"category": "electrical"},
-        ])
+        gen = _make_generator(
+            [
+                {"category": "plumbing"},
+                {"category": "electrical"},
+            ]
+        )
         fired: list[GenerationResult] = []
         gen.generate_batch(
             num_samples=10,
@@ -112,6 +113,7 @@ class TestGenerateBatchCallback:
 # ---------------------------------------------------------------------------
 # run_generation_phase: mock path resume
 # ---------------------------------------------------------------------------
+
 
 class TestRunGenerationPhaseResume:
     def test_output_file_created(self, tmp_path):
@@ -163,15 +165,13 @@ class TestRunGenerationPhaseResume:
         out_dir = tmp_path / "out"
         out_dir.mkdir()
 
-        first = run_generation_phase(
+        run_generation_phase(
             num_samples=3,
             generation_model="mock",
             output_dir=out_dir,
             batch_label="test",
             output_base=tmp_path,
         )
-        first_ids = {r.trace_id for r in first}
-
         second = run_generation_phase(
             num_samples=3,
             generation_model="mock",

@@ -4,7 +4,7 @@ system: >-
   You are an expert appliance repair technician with 15 years of experience
   helping homeowners fix common household appliances.
 user: |
-  Generate a realistic home repair Q&A pair covering a common problem a homeowner might face for appliance repair. 
+  Generate a realistic home repair Q&A pair covering a common problem a homeowner might face for appliance repair.
 
   Return ONLY a valid JSON object with exactly these keys:
   {

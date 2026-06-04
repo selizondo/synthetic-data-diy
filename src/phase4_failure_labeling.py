@@ -15,7 +15,13 @@ import yaml
 from pydantic import BaseModel, Field, create_model
 
 from llm_client import judge_batch
-from schema import FAILURE_MODE_FIELDS, FailureLabelResult, ValidatedResult, qa_format_kwargs, strip_respond_line
+from schema import (
+    FAILURE_MODE_FIELDS,
+    FailureLabelResult,
+    ValidatedResult,
+    qa_format_kwargs,
+    strip_respond_line,
+)
 
 # Default config directory relative to this file
 DEFAULT_FAILURE_MODES_DIR = Path(__file__).parent / "failure_modes"
@@ -28,7 +34,9 @@ class FailureMode:
     prompt_template: str  # placeholders: {question}, {answer}, {steps}, {safety_info}, {tips}, {tools}, {equipment_problem}
 
 
-def load_failure_modes(config_dir: Path = DEFAULT_FAILURE_MODES_DIR) -> list[FailureMode]:
+def load_failure_modes(
+    config_dir: Path = DEFAULT_FAILURE_MODES_DIR,
+) -> list[FailureMode]:
     """Load all failure mode definitions from YAML files in config_dir.
 
     Each file must have: name, description, prompt_template.
@@ -50,24 +58,32 @@ def load_failure_modes(config_dir: Path = DEFAULT_FAILURE_MODES_DIR) -> list[Fai
         missing = [k for k in ("name", "description", "prompt_template") if k not in data]
         if missing:
             raise ValueError(f"{path.name} is missing required keys: {missing}")
-        modes.append(FailureMode(
-            name=data["name"],
-            description=data["description"],
-            prompt_template=data["prompt_template"],
-        ))
+        modes.append(
+            FailureMode(
+                name=data["name"],
+                description=data["description"],
+                prompt_template=data["prompt_template"],
+            )
+        )
 
     return modes
 
 
 def _make_failure_batch_model(mode_names: list[str]) -> type[BaseModel]:
-    return create_model(
+    return create_model(  # type: ignore[call-overload]
         "FailureLabelBatch",
         **{name: (int, Field(..., ge=0, le=1)) for name in mode_names},
     )
 
 
 class FailureLabeler:
-    def __init__(self, judge_model: str, failure_modes: list[FailureMode], additional_context: str = "", batch_label: str = ""):
+    def __init__(
+        self,
+        judge_model: str,
+        failure_modes: list[FailureMode],
+        additional_context: str = "",
+        batch_label: str = "",
+    ):
         self.model = judge_model
         self.failure_modes = failure_modes
         self.additional_context = additional_context
@@ -98,7 +114,12 @@ class FailureLabeler:
             "category": result.category,
         }
         try:
-            batch = judge_batch(self._build_batch_prompt(qa), self._batch_model, self.model, obs_context=obs_context)
+            batch = judge_batch(
+                self._build_batch_prompt(qa),
+                self._batch_model,
+                self.model,
+                obs_context=obs_context,
+            )
             scores = batch.model_dump()
         except Exception as e:
             print(f"\n    [judge_batch error] {type(e).__name__}: {str(e)[:120]}")
@@ -123,23 +144,32 @@ def run_failure_labeling_phase(
     failure_modes = load_failure_modes(config_dir)
     print(f"Loaded {len(failure_modes)} failure modes from {config_dir}")
 
-    labeler = FailureLabeler(judge_model=judge_model, failure_modes=failure_modes, additional_context=additional_context, batch_label=output_dir.name)
+    labeler = FailureLabeler(
+        judge_model=judge_model,
+        failure_modes=failure_modes,
+        additional_context=additional_context,
+        batch_label=output_dir.name,
+    )
     label_results: list[FailureLabelResult] = []
 
     for i, result in enumerate(valid_results):
-        print(f"  [{i+1}/{len(valid_results)}] Labeling {result.trace_id[:8]}... ", end="", flush=True)
+        print(
+            f"  [{i + 1}/{len(valid_results)}] Labeling {result.trace_id[:8]}... ",
+            end="",
+            flush=True,
+        )
         label = labeler.evaluate(result)
         label_results.append(label)
         fail_names = [m for m in FAILURE_MODE_FIELDS if getattr(label, m) == 1]
         status = "FAIL: " + ", ".join(fail_names) if fail_names else "PASS"
         running_rate = sum(r.overall_failure for r in label_results) / len(label_results)
-        print(f"{status}  ({running_rate*100:.0f}% fail so far)")
+        print(f"{status}  ({running_rate * 100:.0f}% fail so far)")
 
     rows = [r.model_dump() for r in label_results]
     df = pd.DataFrame(rows)
 
     overall_rate = df["overall_failure"].mean()
-    print(f"\nFailure labeling complete: {overall_rate*100:.1f}% overall failure rate")
+    print(f"\nFailure labeling complete: {overall_rate * 100:.1f}% overall failure rate")
 
     df.to_csv(output_dir / "failure_labeled_data.csv", index=False)
     df.to_json(output_dir / "failure_labeled_data.json", orient="records", indent=2)

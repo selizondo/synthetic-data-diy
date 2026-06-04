@@ -43,15 +43,12 @@ MOCK_DEFAULTS: dict = {
         "poor_quality_tips": 0.06,
     },
     "quality_rates": {
-        "answer_coherence": 0.99,
         "answer_completeness": 0.97,
-        "appropriate_scope": 0.99,
-        "category_accuracy": 0.99,
-        "problem_answer_alignment": 0.98,
         "safety_specificity": 0.96,
-        "step_actionability": 0.98,
-        "tip_usefulness": 0.97,
         "tool_realism": 0.99,
+        "appropriate_scope": 0.99,
+        "context_clarity": 0.98,
+        "tip_usefulness": 0.97,
     },
     "agreement_rate": 0.88,
 }
@@ -60,6 +57,7 @@ MOCK_DEFAULTS: dict = {
 # ---------------------------------------------------------------------------
 # Step 4: Generate failure labels
 # ---------------------------------------------------------------------------
+
 
 def generate_failure_labels(
     valid_results: list[ValidatedResult],
@@ -72,37 +70,37 @@ def generate_failure_labels(
     n = len(valid_results)
 
     # Draw all dims at once: shape (n,) per dim
-    draws: dict[str, list[int]] = {
-        dim: rng.binomial(1, rates[dim], size=n).tolist()
-        for dim in FAILURE_MODE_FIELDS
-    }
+    draws: dict[str, list[int]] = {dim: rng.binomial(1, rates[dim], size=n).tolist() for dim in FAILURE_MODE_FIELDS}
 
     label_results: list[FailureLabelResult] = []
     for i, result in enumerate(valid_results):
         dim_vals = [draws[dim][i] for dim in FAILURE_MODE_FIELDS]
-        label_results.append(FailureLabelResult(
-            trace_id=result.trace_id,
-            category=result.category,
-            incomplete_answer=dim_vals[0],
-            safety_violations=dim_vals[1],
-            unrealistic_tools=dim_vals[2],
-            overcomplicated_solution=dim_vals[3],
-            missing_context=dim_vals[4],
-            poor_quality_tips=dim_vals[5],
-            overall_failure=int(any(v == 1 for v in dim_vals)),
-            failure_count=sum(dim_vals),
-        ))
+        label_results.append(
+            FailureLabelResult(
+                trace_id=result.trace_id,
+                category=result.category,
+                incomplete_answer=dim_vals[0],
+                safety_violations=dim_vals[1],
+                unrealistic_tools=dim_vals[2],
+                overcomplicated_solution=dim_vals[3],
+                missing_context=dim_vals[4],
+                poor_quality_tips=dim_vals[5],
+                overall_failure=int(any(v == 1 for v in dim_vals)),
+                failure_count=sum(dim_vals),
+            )
+        )
 
     df = pd.DataFrame([r.model_dump() for r in label_results])
     df.to_csv(output_dir / "failure_labeled_data.csv", index=False)
     df.to_json(output_dir / "failure_labeled_data.json", orient="records", indent=2)
-    print(f"Mock failure labeling: {df['overall_failure'].mean()*100:.1f}% overall failure rate")
+    print(f"Mock failure labeling: {df['overall_failure'].mean() * 100:.1f}% overall failure rate")
     return df
 
 
 # ---------------------------------------------------------------------------
 # Step 5: Generate quality evals
 # ---------------------------------------------------------------------------
+
 
 def generate_quality_evals(
     valid_results: list[ValidatedResult],
@@ -114,39 +112,36 @@ def generate_quality_evals(
     rates = quality_rates or MOCK_DEFAULTS["quality_rates"]
     n = len(valid_results)
 
-    draws: dict[str, list[int]] = {
-        dim: rng.binomial(1, rates[dim], size=n).tolist()
-        for dim in QUALITY_DIMENSION_FIELDS
-    }
+    draws: dict[str, list[int]] = {dim: rng.binomial(1, rates[dim], size=n).tolist() for dim in QUALITY_DIMENSION_FIELDS}
 
     eval_results: list[QualityEvalResult] = []
     for i, result in enumerate(valid_results):
-        dim_vals = [draws[dim][i] for dim in QUALITY_DIMENSION_FIELDS]
-        eval_results.append(QualityEvalResult(
-            trace_id=result.trace_id,
-            category=result.category,
-            answer_coherence=dim_vals[0],
-            answer_completeness=dim_vals[1],
-            appropriate_scope=dim_vals[2],
-            category_accuracy=dim_vals[3],
-            problem_answer_alignment=dim_vals[4],
-            safety_specificity=dim_vals[5],
-            step_actionability=dim_vals[6],
-            tip_usefulness=dim_vals[7],
-            tool_realism=dim_vals[8],
-            overall_quality_pass=int(all(v == 1 for v in dim_vals)),
-        ))
+        dim_kwargs = {dim: draws[dim][i] for dim in QUALITY_DIMENSION_FIELDS}
+        eval_results.append(
+            QualityEvalResult(
+                trace_id=result.trace_id,
+                category=result.category,
+                answer_completeness=dim_kwargs["answer_completeness"],
+                safety_specificity=dim_kwargs["safety_specificity"],
+                tool_realism=dim_kwargs["tool_realism"],
+                appropriate_scope=dim_kwargs["appropriate_scope"],
+                context_clarity=dim_kwargs["context_clarity"],
+                tip_usefulness=dim_kwargs["tip_usefulness"],
+                overall_quality_pass=int(all(v == 1 for v in dim_kwargs.values())),
+            )
+        )
 
     df = pd.DataFrame([r.model_dump() for r in eval_results])
     df.to_csv(output_dir / "quality_eval_data.csv", index=False)
     df.to_json(output_dir / "quality_eval_data.json", orient="records", indent=2)
-    print(f"Mock quality eval: {df['overall_quality_pass'].mean()*100:.1f}% overall quality pass rate")
+    print(f"Mock quality eval: {df['overall_quality_pass'].mean() * 100:.1f}% overall quality pass rate")
     return df
 
 
 # ---------------------------------------------------------------------------
 # Step 6: Generate human labels
 # ---------------------------------------------------------------------------
+
 
 def generate_human_labels(
     valid_results: list[ValidatedResult],
@@ -159,7 +154,6 @@ def generate_human_labels(
     flip_prob = 1.0 - (agreement_rate if agreement_rate is not None else MOCK_DEFAULTS["agreement_rate"])
     qdf_by_id = quality_df.set_index("trace_id").to_dict("index")
 
-    human_dims = list(HUMAN_TO_LLM.keys())
     labels: list[dict] = []
     for result in valid_results:
         if result.trace_id not in qdf_by_id:
@@ -171,26 +165,27 @@ def generate_human_labels(
             flip = int(rng.binomial(1, flip_prob))
             dim_vals[human_key] = int(llm_val ^ flip)  # XOR binary flip
 
-        labels.append({
-            "trace_id": result.trace_id,
-            "category": result.category,
-            "labeler": "human",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            **dim_vals,
-            "overall_pass": int(all(v == 1 for v in dim_vals.values())),
-        })
+        labels.append(
+            {
+                "trace_id": result.trace_id,
+                "category": result.category,
+                "labeler": "human",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                **dim_vals,
+                "overall_pass": int(all(v == 1 for v in dim_vals.values())),
+            }
+        )
 
-    (output_dir / "human_labels.json").write_text(
-        json.dumps(labels, indent=2, ensure_ascii=False)
-    )
+    (output_dir / "human_labels.json").write_text(json.dumps(labels, indent=2, ensure_ascii=False))
     agreement_approx = 1.0 - flip_prob
-    print(f"Mock human labels: {len(labels)} records, ~{agreement_approx*100:.0f}% agreement rate")
+    print(f"Mock human labels: {len(labels)} records, ~{agreement_approx * 100:.0f}% agreement rate")
     return labels
 
 
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
+
 
 def run_mock_pipeline(
     batch_label: str = "baseline-mock",
@@ -216,6 +211,7 @@ def run_mock_pipeline(
 
     # Steps 1+2 — Sample benchmark rows and wrap as GenerationResult
     from phase1_generation import run_generation_phase
+
     gen_results = run_generation_phase(
         num_samples=num_samples,
         generation_model="mock",
@@ -227,6 +223,7 @@ def run_mock_pipeline(
 
     # Step 3 — Run real Phase 2 (structural validation + heuristic gates)
     from phase2_validation import run_validation_phase
+
     valid_results, summary = run_validation_phase(gen_results, output_dir)
 
     if len(valid_results) == 0:
@@ -241,7 +238,7 @@ def run_mock_pipeline(
         )
 
     # Step 4 — Synthetic failure labels (no LLM call)
-    failure_df = generate_failure_labels(valid_results, rng, failure_rates, output_dir)
+    generate_failure_labels(valid_results, rng, failure_rates, output_dir)
 
     # Step 5 — Synthetic quality evals (no LLM call)
     quality_df = generate_quality_evals(valid_results, rng, quality_rates, output_dir)
@@ -252,6 +249,7 @@ def run_mock_pipeline(
 
     # Step 7 — Real Phase 6 analysis + charts
     from phase6_analysis import run_analysis_phase
+
     run_analysis_phase(output_dir=output_dir)
 
     return output_dir

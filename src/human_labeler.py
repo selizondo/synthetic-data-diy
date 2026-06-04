@@ -77,7 +77,7 @@ def _wrap(text: str, width: int = 88, indent: str = "    ") -> str:
 
 def _ask_binary(label: str) -> int:
     while True:
-        raw = input(f"    Pass? [y/n]: ").strip().lower()
+        raw = input("    Pass? [y/n]: ").strip().lower()
         if raw in ("y", "yes", "1"):
             return 1
         if raw in ("n", "no", "0"):
@@ -94,11 +94,11 @@ def _display_item(item: dict, index: int, total: int) -> None:
     print(f"\n  ANSWER:\n{_wrap(qa['answer'])}")
     print(f"\n  EQUIPMENT PROBLEM:\n{_wrap(qa['equipment_problem'])}")
     print(f"\n  TOOLS REQUIRED:\n{_wrap(', '.join(qa['tools_required']))}")
-    print(f"\n  STEPS:")
+    print("\n  STEPS:")
     for i, step in enumerate(qa["steps"], 1):
         print(_wrap(f"{i}. {step}"))
     print(f"\n  SAFETY INFO:\n{_wrap(qa['safety_info'])}")
-    print(f"\n  TIPS:")
+    print("\n  TIPS:")
     for tip in qa["tips"]:
         print(_wrap(f"• {tip}"))
 
@@ -156,7 +156,7 @@ def run_human_labeling(batch_label: str, num_items: int, output_dir: Path) -> No
 
     if not to_label:
         print(f"Nothing to label — {len(existing)} items already labeled, none remain.")
-        print(f"Run with a larger --items value or after generating more data.")
+        print("Run with a larger --items value or after generating more data.")
         return
 
     print(f"\nBatch        : {batch_label}")
@@ -185,14 +185,14 @@ def run_human_labeling(batch_label: str, num_items: int, output_dir: Path) -> No
         print("No items labeled this session.")
         return
 
-    print(f"\n{'─'*72}")
+    print(f"\n{'─' * 72}")
     print(f"Session complete  |  labeled this session: {len(session_records)}  |  total: {len(results)}")
     print("\nPer-dimension pass rates (this session):")
     for dim in DIMENSIONS:
         rate = sum(r[dim["key"]] for r in session_records) / len(session_records)
-        print(f"  {dim['label']}: {rate*100:.0f}%")
+        print(f"  {dim['label']}: {rate * 100:.0f}%")
     overall = sum(r["overall_pass"] for r in session_records) / len(session_records)
-    print(f"  Overall pass (all 6): {overall*100:.0f}%")
+    print(f"  Overall pass (all 6): {overall * 100:.0f}%")
     print(f"\nSaved → {labels_json}")
     print(f"Saved → {labels_csv}")
 
@@ -201,12 +201,25 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Human CLI labeler — collect 6-dimension pass/fail labels on generated Q&A items"
     )
-    parser.add_argument("--batch-label", required=True, dest="batch_label",
-                        help="Batch label of the run to label (e.g. baseline-v2)")
-    parser.add_argument("--items", type=int, default=20,
-                        help="Number of items to label in this session (default: 20)")
-    parser.add_argument("--output-dir", type=str, default="output", dest="output_dir",
-                        help="Base output directory (default: output)")
+    parser.add_argument(
+        "--batch-label",
+        required=True,
+        dest="batch_label",
+        help="Batch label of the run to label (e.g. baseline-v2)",
+    )
+    parser.add_argument(
+        "--items",
+        type=int,
+        default=20,
+        help="Number of items to label in this session (default: 20)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="output",
+        dest="output_dir",
+        help="Base output directory (default: output)",
+    )
     args = parser.parse_args()
 
     run_human_labeling(
