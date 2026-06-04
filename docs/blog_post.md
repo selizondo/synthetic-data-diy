@@ -159,8 +159,8 @@ The full 7-phase evaluation loop — generation, validation, calibration, failur
 ## Run It Yourself
 
 ```bash
-git clone git@github.com:selizondo/newline_stuff.git
-cd newline_stuff/projects/synthetic_data_diy/src
+git clone git@github.com:selizondo/synthetic-data-diy.git
+cd synthetic-data-diy
 
 pip install -r requirements.txt
 cp .env.example .env
