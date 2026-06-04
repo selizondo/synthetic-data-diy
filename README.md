@@ -44,7 +44,7 @@ Spec: [synthetic_data_diy.md](synthetic_data_diy.md)
 | **6a. Calibrate** | If agreement < 80% on any dim, iterate judge prompt until calibrated |
 | **6b. Correct** | Once judge is trusted, identify worst segment × dimension, fix generator prompt, re-run |
 
-**6 quality dimensions:** Accuracy (D1), Safety (D2), Specificity (D3), Completeness (D4), Clarity (D5), Context (D6)
+**6 quality dimensions:** Answer Completeness (D1), Safety Specificity (D2), Tool Realism (D3), Scope Appropriateness (D4), Context Clarity (D5), Tip Usefulness (D6)
 
 **Success signal:** Measurable pass-rate improvement on the corrected segment vs. baseline.
 
@@ -66,16 +66,19 @@ cp .env.example .env   # set LLM_API_KEY / LLM_BASE_URL
 cd src
 
 # Run full pipeline (baseline batch)
-python main.py run --batch-label baseline
+python main.py --batch-label baseline
 
-# Human labeling step
+# Human labeling step (interactive CLI)
 python human_labeler.py --batch-label baseline
 
-# Analysis + charts
-python main.py analysis --batch-label baseline
+# Phase A: check human/LLM agreement per dimension
+python main.py agreement --batch-label baseline
 
-# Correction phase (Phase 6b)
-python main.py correction --batch-label baseline
+# Stats + analysis for a completed run
+python main.py stats --batch-label baseline
+
+# Correction phase (Phase 7 — requires phases 4-5 output)
+python main.py --phase 7 --batch-label baseline
 ```
 
 ---
@@ -85,17 +88,18 @@ python main.py correction --batch-label baseline
 ```
 synthetic_data_diy/
 ├── src/
-│   ├── main.py                  # CLI entry point (run / questions / analysis / correction)
+│   ├── main.py                  # CLI entry point (stats / agreement / mock / plan / questions)
 │   ├── phase1_generation.py     # LLM Q&A generation (Instructor + structured output)
 │   ├── phase2_validation.py     # Schema + heuristic gates + dedup + distribution check
-│   ├── phase3_human_labeling.py # CLI labeler (6-dim binary pass/fail)
-│   ├── phase4_llm_judge.py      # LLM-as-Judge (6-dim, batch via instructor)
-│   ├── phase5_analysis.py       # Aggregation, agreement metrics, charts
-│   ├── phase6_iteration.py      # Judge calibration loop
+│   ├── phase3_benchmark.py      # Benchmark comparison + category distribution check
+│   ├── phase4_failure_labeling.py # LLM-as-Judge failure labeling (6-dim, batch via instructor)
+│   ├── phase5_quality_eval.py   # Quality evaluation + agreement metrics
+│   ├── phase6_analysis.py       # Aggregation, segment-level metrics, charts
 │   ├── phase7_correction.py     # Generator correction + before/after comparison
+│   ├── human_labeler.py         # Interactive CLI labeler (6-dim binary pass/fail)
+│   ├── agreement.py             # Human/LLM agreement computation (TP/TN/FP/FN per dim)
 │   ├── llm_client.py            # Shared LLM client adapter (wraps llm_utils)
-│   └── models.py                # Pydantic schemas (RepairQA, JudgeLabel, etc.)
+│   └── schema.py                # Pydantic schemas (RepairQA, JudgeLabel, etc.)
 ├── data/                        # Generated batches, labels, iteration logs
-├── synthetic_data_diy.md        # Full project spec
-└── blog_Synthetic_Data_DIY.md
+└── synthetic_data_diy.md        # Full project spec
 ```
