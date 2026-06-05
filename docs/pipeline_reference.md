@@ -11,27 +11,16 @@ failure labeling → quality scoring → analysis → data-driven iterative corr
 
 ### 1. Prerequisites
 
-- Python 3.10+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - An OpenAI-compatible LLM endpoint for **generation** (OpenAI, Groq, or Ollama)
 - An OpenAI-compatible LLM endpoint for **judging** (can be the same; local Ollama recommended to save cost)
 - [Ollama](https://ollama.com/) optional but recommended for free local judging (`ollama pull qwen2.5:3b`)
 
-> **Important:** all commands must be run from the `src/` directory. The `.env` file
-> is loaded relative to CWD at import time; running from the project root will silently
-> fail to load credentials.
-
 ### 2. Install
 
 ```bash
-cd synthetic_data_diy/src
-
-# Option A — uv (recommended)
-uv pip install -r requirements.txt
-uv pip install -e ../../llm_utils/    # shared LLM utilities (local editable)
-
-# Option B — pip
-pip install -r requirements.txt
-pip install -e ../../llm_utils/
+uv sync --all-extras   # installs all deps including dev tools
 ```
 
 ### 3. Configure environment
@@ -66,8 +55,7 @@ python main.py stats
 
 Expected: `smoke-test` row shows ✓ for Ph1–Ph6 (Ph7 skipped for mock).
 
-> **No test suite** — this project has no `pytest` tests. The mock pipeline is the
-> fastest way to verify the full wiring end-to-end before using real API credits.
+> The mock pipeline is the fastest way to verify the full wiring end-to-end before using real API credits. Run `pytest tests/ -v` for the unit test suite (44 tests, no API calls).
 
 ---
 
@@ -75,7 +63,7 @@ Expected: `smoke-test` row shows ✓ for Ph1–Ph6 (Ph7 skipped for mock).
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+uv sync --all-extras
 
 # Copy and fill in credentials
 cp .env.example .env
