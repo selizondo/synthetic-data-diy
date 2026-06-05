@@ -38,11 +38,13 @@ Automated pipeline that generates, validates, evaluates, and iteratively improve
 |---|---|
 | **1. Generate** | Structured prompt → LLM (Instructor) → Q&A items across 5 repair categories |
 | **2. Validate** | Schema checks + per-dimension heuristic gates + dedup + category distribution |
-| **3. Human Label** | CLI reviewer scores each item on 6 quality dimensions (binary pass/fail) |
-| **4. LLM Judge** | Independent LLM scores the same 6 dimensions (different prompt, lower temp) |
-| **5. Analyze** | Aggregate labels, compute human/LLM agreement per dimension, produce charts |
-| **6a. Calibrate** | If agreement < 80% on any dim, iterate judge prompt until calibrated |
-| **6b. Correct** | Once judge is trusted, identify worst segment × dimension, fix generator prompt, re-run |
+| **3. Benchmark** | Calibrate judge against HuggingFace benchmark before trusting scores |
+| **4. Failure Label** | LLM-as-Judge scores each item on 6 binary failure modes (batch, instructor) |
+| **5. Quality Eval** | LLM-as-Judge scores each item on 6 quality dimensions D1–D6 (separate prompt, lower temp) |
+| **6. Analyze** | Aggregate labels, compute human/LLM agreement per dimension, produce charts |
+| **7. Correct** | Identify worst segment × dimension, fix generator prompt, re-run phases 1–5 |
+
+*Human labeling is a separate optional step — run `python human_labeler.py --batch-label <label>` after Phase 2 to collect binary pass/fail scores on all 6 dimensions for agreement computation.*
 
 **6 quality dimensions:** Answer Completeness (D1), Safety Specificity (D2), Tool Realism (D3), Scope Appropriateness (D4), Context Clarity (D5), Tip Usefulness (D6)
 
