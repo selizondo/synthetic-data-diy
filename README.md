@@ -6,7 +6,7 @@ Automated pipeline that generates, validates, evaluates, and iteratively improve
 
 *Companion post: [docs/blog_post.md](docs/blog_post.md) — the agreement gate that stops you from trusting a judge that disagrees with humans 30% of the time.*
 
-*See [docs/tradeoffs.md](docs/tradeoffs.md) for design decisions and [docs/failures.md](docs/failures.md) for known failure modes.*
+*See [docs/tradeoffs.md](docs/tradeoffs.md) for design decisions, [docs/failures.md](docs/failures.md) for known failure modes, and [docs/pipeline_reference.md](docs/pipeline_reference.md) for full CLI reference, config vars, cost analysis, and phase rationale.*
 
 ---
 
