@@ -4,8 +4,6 @@
 
 Automated pipeline that generates, validates, evaluates, and iteratively improves synthetic Q&A training data for a Home DIY Repair assistant.
 
-Spec: [synthetic_data_diy.md](synthetic_data_diy.md)
-
 *Companion post: [docs/blog_post.md](docs/blog_post.md) — the agreement gate that stops you from trusting a judge that disagrees with humans 30% of the time.*
 
 *See [docs/tradeoffs.md](docs/tradeoffs.md) for design decisions and [docs/failures.md](docs/failures.md) for known failure modes.*
@@ -102,6 +100,5 @@ synthetic_data_diy/
 │   ├── agreement.py             # Human/LLM agreement computation (TP/TN/FP/FN per dim)
 │   ├── llm_client.py            # Shared LLM client adapter (wraps llm_utils)
 │   └── schema.py                # Pydantic schemas (RepairQA, JudgeLabel, etc.)
-├── data/                        # Generated batches, labels, iteration logs
-└── synthetic_data_diy.md        # Full project spec
+└── data/                        # Generated batches, labels, iteration logs
 ```
