@@ -1,4 +1,4 @@
-# Synthetic Data DIY — Home Repair Q&A Generator (P1)
+# Synthetic Data DIY — Home Repair Q&A Generator
 
 ![Tests](https://github.com/selizondo/synthetic-data-diy/actions/workflows/ci.yml/badge.svg)
 
