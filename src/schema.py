@@ -88,6 +88,9 @@ class GenerationResult(BaseModel):
     validation_errors: Optional[list[dict]] = None  # Pydantic field errors from InstructorRetryException
     validation_attempts: Optional[int] = None  # how many instructor retries were burned
     generation_timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    config_hash: str = ""  # MD5[:8] of {model, strategy} — stable identifier for a generation config.
+    fallback_used: bool = False  # True when generation failed (parse error or exception); not LLM-generated.
+    fallback_reason: str | None = None  # e.g. "validation_failed" or "generation_error".
 
 
 # ---------------------------------------------------------------------------

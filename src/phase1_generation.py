@@ -6,6 +6,7 @@ Pass generation_model="mock" to run_generation_phase() to sample from the local
 benchmark cache instead of calling an LLM (zero API credentials required).
 """
 
+import hashlib
 import json
 import random
 import uuid
@@ -46,6 +47,9 @@ class DIYDatasetGenerator:
         self.batch_id = batch_id
         self.batch_label = batch_label
         self.additional_context = additional_context
+        self._config_hash = hashlib.md5(
+            json.dumps({"model": generation_model, "strategy": strategy}, sort_keys=True).encode()
+        ).hexdigest()[:8]
         self.templates = load_prompt_templates(strategy)
         self._answer_templates: dict[str, dict] | None = None  # lazy-loaded for Ph1b
 
@@ -91,6 +95,7 @@ class DIYDatasetGenerator:
                 prompt_strategy=self.strategy,
                 raw_response=qa.model_dump_json(),
                 raw_dict=qa.model_dump(),
+                config_hash=self._config_hash,
             )
         except InstructorRetryException as e:
             return GenerationResult(
@@ -103,6 +108,9 @@ class DIYDatasetGenerator:
                 parse_error=str(e),
                 validation_errors=e.validation_errors,  # type: ignore[attr-defined]
                 validation_attempts=e.validation_attempts,  # type: ignore[attr-defined]
+                config_hash=self._config_hash,
+                fallback_used=True,
+                fallback_reason="validation_failed",
             )
         except Exception as e:
             return GenerationResult(
@@ -113,6 +121,9 @@ class DIYDatasetGenerator:
                 prompt_strategy=self.strategy,
                 raw_response="",
                 parse_error=str(e),
+                config_hash=self._config_hash,
+                fallback_used=True,
+                fallback_reason="generation_error",
             )
 
     def generate_single(self, template: dict) -> GenerationResult:
@@ -148,6 +159,7 @@ class DIYDatasetGenerator:
                 prompt_strategy=self.strategy,
                 raw_response=qa.model_dump_json(),
                 raw_dict=qa.model_dump(),
+                config_hash=self._config_hash,
             )
         except InstructorRetryException as e:
             return GenerationResult(
@@ -160,6 +172,9 @@ class DIYDatasetGenerator:
                 parse_error=str(e),
                 validation_errors=e.validation_errors,  # type: ignore[attr-defined]
                 validation_attempts=e.validation_attempts,  # type: ignore[attr-defined]
+                config_hash=self._config_hash,
+                fallback_used=True,
+                fallback_reason="validation_failed",
             )
         except Exception as e:
             return GenerationResult(
@@ -170,6 +185,9 @@ class DIYDatasetGenerator:
                 prompt_strategy=self.strategy,
                 raw_response="",
                 parse_error=str(e),
+                config_hash=self._config_hash,
+                fallback_used=True,
+                fallback_reason="generation_error",
             )
 
     def generate_batch(

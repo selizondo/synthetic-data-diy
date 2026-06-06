@@ -27,3 +27,7 @@ After the LLM corrects an invalid item, it is put back through schema validation
 ## 7-field schema (not minimal)
 
 `QAPair` requires all 7 fields (`question`, `answer`, `equipment_problem`, `tools_required`, `steps`, `safety_info`, `tips`). A minimal schema (question + answer) would be easier to generate but wouldn't produce the structured, multi-section data needed for fine-tuning a DIY assistant. The constraint is a feature: it forces the LLM to produce grounded, tool-specific, step-by-step content and makes schema validation a meaningful quality gate.
+
+## Scale boundaries
+
+This pipeline is appropriate for datasets up to ~5,000 items per run. Beyond that: single-process generation throughput is bounded by LLM API rate limits (~10 req/s sustained); JSONL checkpoint files become slow to scan on restart (O(n) trace_id dedup scan); and the Phase A human calibration step (≥80% agreement gate) assumes a manageable spot-check sample, not a statistically representative stratified sample. Revisit triggers: dataset target above 5K items, need for parallel phase execution across multiple workers, or a downstream consumer that requires a query-able store rather than flat JSONL files.
