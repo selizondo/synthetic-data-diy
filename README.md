@@ -1,106 +1,49 @@
-# Synthetic Data DIY — Home Repair Q&A Generator
+# Synthetic Data DIY
 
 ![Tests](https://github.com/selizondo/synthetic-data-diy/actions/workflows/ci.yml/badge.svg)
 
-Automated pipeline that generates, validates, evaluates, and iteratively improves synthetic Q&A training data for a Home DIY Repair assistant.
+LLM-generated training data is fast to produce and difficult to trust. A model generating DIY repair advice will produce dangerously incomplete electrical guidance, recommend exotic tools, and give vague instructions that sound correct but aren't. Without a calibration step, you're trusting a judge that may disagree with humans 30% of the time.
 
-*Companion post: [docs/blog_post.md](docs/blog_post.md) — the agreement gate that stops you from trusting a judge that disagrees with humans 30% of the time.*
+This pipeline generates, validates, evaluates, and iteratively corrects synthetic Q&A training data for a Home DIY Repair assistant. The key gate: an LLM judge must pass 80% agreement with human labels on each of 6 quality dimensions before it's allowed to score the full dataset. If it doesn't pass, the judge prompt is revised, not the threshold.
 
-*See [docs/tradeoffs.md](docs/tradeoffs.md) for design decisions, [docs/failures.md](docs/failures.md) for known failure modes, and [docs/pipeline_reference.md](docs/pipeline_reference.md) for full CLI reference, config vars, cost analysis, and phase rationale.*
+**Stack:** Python · OpenAI · instructor · Pydantic · Logfire
 
----
+## Results
 
-## Key Concepts
+7-phase pipeline on Home DIY Q&A (plumbing, electrical, carpentry, painting, flooring):
 
-**Trace ID** — UUID assigned at generation time and carried through all 7 phases. Enables joining records across `generation_results.json`, `failure_labeled_data.json`, `quality_eval_data.json`, and Logfire/Langfuse traces without a database.
+| Signal | Value |
+|--------|-------|
+| Agreement gate threshold | 80% per-dimension human/judge agreement |
+| Quality dimensions | 6 (D1-D6): completeness, safety, tool realism, scope, clarity, tip usefulness |
+| Correction loop | One targeted fix per iteration: worst segment x dimension |
+| Scale boundary | ~5,000 items per run (single-process, JSONL checkpointing) |
+| Phase 3 benchmark | Must pass before the judge scores the dataset |
 
-**6 quality dimensions (D1–D6)** — binary pass/fail scored independently by human and LLM judge on the same item: Answer Completeness, Safety Specificity, Tool Realism, Scope Appropriateness, Context Clarity, Tip Usefulness. The per-dimension disagrement rate drives the calibration loop.
+## How It Works
 
-**Agreement gate (80%)** — before trusting the LLM judge at scale, Phase A computes human/judge agreement per dimension. Any dimension below 80% blocks Phase 5 and triggers prompt revision. Uses TP/TN/FP/FN counts, not just overall accuracy, to distinguish "judge too strict" from "judge too lenient."
+### The agreement gate blocks the pipeline
 
-**Instructor** — wraps the OpenAI API to enforce a Pydantic schema at output time, retrying on parse failures internally. Prevents schema validation failures from reaching Phase 2 (validation phase handles semantic failures, not structural ones).
+Phase A computes human/judge agreement per dimension using TP/TN/FP/FN counts, not just overall accuracy. This distinguishes "judge too strict" from "judge too lenient": both fail at 80% but need opposite fixes. Any dimension below 80% blocks Phase 5 and triggers prompt revision. This is the gate that prevents trusting a miscalibrated judge at scale.
 
-**Correction loop** — Phase 7 targets the single (segment × dimension) combination with the worst failure rate, rewrites the generator prompt for that failure mode, re-runs generation on that segment, and compares pass rates before and after. One targeted fix per iteration — avoids prompt drift from over-correcting.
+### Heuristics first, LLM judge second
 
----
+Phase 2 applies deterministic rule checks (safety length, generic phrase detection, tool blocklist, tip length) before routing items to the LLM judge. Rules are fast, free, and reproducible. The LLM judge handles cases rules can't catch: plausible-sounding but wrong safety advice, hallucinated but realistic tool names. This ordering keeps API costs bounded and makes early-stage failures auditable without parsing model outputs.
 
-## Objective
+### Correction loop targets one failure at a time
 
-**Problem:** Training a reliable DIY repair assistant requires large volumes of accurate, safe, and practical Q&A data. Manual authoring is expensive and slow. LLM-generated data is fast but unreliable — models produce dangerously incomplete electrical guidance, recommend exotic tools, or give vague advice that doesn't actually help.
+Phase 7 identifies the single worst segment x dimension combination, rewrites the generator prompt for that failure mode, re-runs generation on that segment, and compares pass rates before and after. One fix per iteration. Over-correcting by patching multiple dimensions simultaneously produces prompt drift where it's unclear which change caused which improvement.
 
-**Solution:** A 7-phase pipeline that generates data at scale and proves it improved through a measurable before/after ratio — mirroring a real-world MLOps workflow (generate → evaluate → diagnose → fix).
-
-**Core challenge:** LLMs don't self-correct without feedback. The system must compare human judgments against an independent LLM-as-Judge on the same 6 quality dimensions, use that disagreement to calibrate the judge, and then use the calibrated judge to drive generator prompt correction.
-
-**Seven pipeline phases:**
-
-| Phase | What happens |
-|---|---|
-| **1. Generate** | Structured prompt → LLM (Instructor) → Q&A items across 5 repair categories |
-| **2. Validate** | Schema checks + per-dimension heuristic gates + dedup + category distribution |
-| **3. Benchmark** | Calibrate judge against HuggingFace benchmark before trusting scores |
-| **4. Failure Label** | LLM-as-Judge scores each item on 6 binary failure modes (batch, instructor) |
-| **5. Quality Eval** | LLM-as-Judge scores each item on 6 quality dimensions D1–D6 (separate prompt, lower temp) |
-| **6. Analyze** | Aggregate labels, compute human/LLM agreement per dimension, produce charts |
-| **7. Correct** | Identify worst segment × dimension, fix generator prompt, re-run phases 1–5 |
-
-*Human labeling is a separate optional step — run `python human_labeler.py --batch-label <label>` after Phase 2 to collect binary pass/fail scores on all 6 dimensions for agreement computation.*
-
-**6 quality dimensions:** Answer Completeness (D1), Safety Specificity (D2), Tool Realism (D3), Scope Appropriateness (D4), Context Clarity (D5), Tip Usefulness (D6)
-
-**Success signal:** Measurable pass-rate improvement on the corrected segment vs. baseline.
+**Companion post:** [The Agreement Gate: Why You Can't Skip Judge Calibration](docs/blog_post.md)
+**Related projects:** [llm-eval-harness](https://github.com/selizondo/llm-eval-harness) (LLM-as-judge for RAG evaluation; same judgment pattern, different domain) · [finetune-case-study](https://github.com/selizondo/finetune-case-study) (this pipeline produces the dataset that feeds fine-tuning)
 
 ---
 
-## Setup
+## Go Deeper
 
-```bash
-cd src
-pip install -r requirements.txt
-cp .env.example .env   # set LLM_API_KEY / LLM_BASE_URL
-```
-
----
-
-## Run
-
-```bash
-cd src
-
-# Run full pipeline (baseline batch)
-python main.py --batch-label baseline
-
-# Human labeling step (interactive CLI)
-python human_labeler.py --batch-label baseline
-
-# Phase A: check human/LLM agreement per dimension
-python main.py agreement --batch-label baseline
-
-# Stats + analysis for a completed run
-python main.py stats --batch-label baseline
-
-# Correction phase (Phase 7 — requires phases 4-5 output)
-python main.py --phase 7 --batch-label baseline
-```
-
----
-
-## Project Layout
-
-```
-synthetic_data_diy/
-├── src/
-│   ├── main.py                  # CLI entry point (stats / agreement / mock / plan / questions)
-│   ├── phase1_generation.py     # LLM Q&A generation (Instructor + structured output)
-│   ├── phase2_validation.py     # Schema + heuristic gates + dedup + distribution check
-│   ├── phase3_benchmark.py      # Benchmark comparison + category distribution check
-│   ├── phase4_failure_labeling.py # LLM-as-Judge failure labeling (6-dim, batch via instructor)
-│   ├── phase5_quality_eval.py   # Quality evaluation + agreement metrics
-│   ├── phase6_analysis.py       # Aggregation, segment-level metrics, charts
-│   ├── phase7_correction.py     # Generator correction + before/after comparison
-│   ├── human_labeler.py         # Interactive CLI labeler (6-dim binary pass/fail)
-│   ├── agreement.py             # Human/LLM agreement computation (TP/TN/FP/FN per dim)
-│   ├── llm_client.py            # Shared LLM client adapter (wraps llm_utils)
-│   └── schema.py                # Pydantic schemas (RepairQA, JudgeLabel, etc.)
-└── data/                        # Generated batches, labels, iteration logs
-```
+| Audience | Doc |
+|----------|-----|
+| Running the code | [Setup and Usage](docs/setup.md) |
+| Engineering decisions | [Design and Tradeoffs](docs/engineering.md) |
+| Evaluation methodology | [Methodology](docs/methodology.md) |
+| What breaks and why | [Failure Modes](docs/failures.md) |
