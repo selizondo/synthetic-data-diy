@@ -8,6 +8,15 @@ This pipeline generates, validates, evaluates, and iteratively corrects syntheti
 
 **Stack:** Python · OpenAI · instructor · Pydantic · Logfire
 
+## Related Projects
+
+1. [llm-eval-harness](https://github.com/selizondo/llm-eval-harness) — LLM-as-judge for RAG evaluation; same judgment pattern, different domain
+2. [finetune-case-study](https://github.com/selizondo/finetune-case-study) — this pipeline produces the dataset for fine-tuning
+
+*Companion post: [The Agreement Gate: Why You Can't Skip Judge Calibration](docs/blog_post.md) — data generation and validation*
+
+---
+
 ## Results
 
 7-phase pipeline on Home DIY Q&A (plumbing, electrical, carpentry, painting, flooring):
@@ -33,11 +42,6 @@ Phase 2 applies deterministic rule checks (safety length, generic phrase detecti
 ### Correction loop targets one failure at a time
 
 Phase 7 identifies the single worst segment x dimension combination, rewrites the generator prompt for that failure mode, re-runs generation on that segment, and compares pass rates before and after. One fix per iteration. Over-correcting by patching multiple dimensions simultaneously produces prompt drift where it's unclear which change caused which improvement.
-
-**Companion post:** [The Agreement Gate: Why You Can't Skip Judge Calibration](docs/blog_post.md)
-**Related projects:** [llm-eval-harness](https://github.com/selizondo/llm-eval-harness) (LLM-as-judge for RAG evaluation; same judgment pattern, different domain) · [finetune-case-study](https://github.com/selizondo/finetune-case-study) (this pipeline produces the dataset that feeds fine-tuning)
-
----
 
 ## Go Deeper
 

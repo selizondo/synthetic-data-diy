@@ -1,5 +1,19 @@
 # Setup and Usage
 
+## Key Concepts
+
+**Agreement gate:** Phase A computes human/judge agreement per dimension using TP/TN/FP/FN counts (not just overall accuracy). Distinguishes "too strict" from "too lenient" — both fail at 80% but need opposite fixes. Any dimension below 80% blocks Phase 5 and triggers prompt revision.
+
+**Heuristics first, LLM judge second:** Phase 2 applies deterministic rules (safety length, generic phrase detection, tool blocklist, tip length) before routing to LLM. Rules are fast, free, reproducible. LLM judge handles cases rules can't catch: plausible-sounding but wrong safety advice, hallucinated tools.
+
+**Correction loop targets one failure at a time:** Phase 7 identifies the worst segment × dimension combination, rewrites the generator prompt for that failure mode, re-runs generation, compares before/after. One fix per iteration prevents prompt drift where it's unclear which change caused improvement.
+
+**6 quality dimensions:** D1: completeness, D2: safety specificity, D3: tool realism, D4: scope appropriateness, D5: context clarity, D6: tip usefulness. Each dimension has its own pass/fail gate before scaling to full dataset.
+
+**Scale boundary:** ~5,000 items per run (single-process, JSONL checkpointing). Beyond this, distributed checkpointing and parallel phases become bottlenecks.
+
+---
+
 ## Prerequisites
 
 - Python 3.11+
