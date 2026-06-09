@@ -8,12 +8,12 @@ This pipeline generates, validates, evaluates, and iteratively corrects syntheti
 
 **Stack:** Python · OpenAI · instructor · Pydantic · Logfire
 
-## Related Projects
+**Related Projects:**
 
-1. [llm-eval-harness](https://github.com/selizondo/llm-eval-harness) — LLM-as-judge for RAG evaluation; same judgment pattern, different domain
-2. [finetune-case-study](https://github.com/selizondo/finetune-case-study) — this pipeline produces the dataset for fine-tuning
+* [llm-eval-harness](https://github.com/selizondo/llm-eval-harness) - LLM-as-judge for RAG evaluation; same judgment pattern, different domain
+* [finetune-case-study](https://github.com/selizondo/finetune-case-study) - this pipeline produces the dataset for fine-tuning
 
-*Companion post: [The Agreement Gate: Why You Can't Skip Judge Calibration](docs/blog_post.md) — data generation and validation*
+*Companion post: [The Agreement Gate: Why You Can't Skip Judge Calibration](docs/blog_post.md)*
 
 ---
 
@@ -31,9 +31,9 @@ This pipeline generates, validates, evaluates, and iteratively corrects syntheti
 
 ## How It Works
 
-### The agreement gate blocks the pipeline
+### Human Calibration gates the judge
 
-Phase A computes human/judge agreement per dimension using TP/TN/FP/FN counts, not just overall accuracy. This distinguishes "judge too strict" from "judge too lenient": both fail at 80% but need opposite fixes. Any dimension below 80% blocks Phase 5 and triggers prompt revision. This is the gate that prevents trusting a miscalibrated judge at scale.
+Human Calibration computes human/judge agreement per dimension using TP/TN/FP/FN counts, not just overall accuracy. This distinguishes "judge too strict" from "judge too lenient": both fail at 80% but need opposite fixes. Any dimension below 80% blocks Phase 5 and triggers prompt revision. This is the gate that prevents trusting a miscalibrated judge at scale.
 
 ### Heuristics first, LLM judge second
 

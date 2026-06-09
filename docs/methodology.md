@@ -44,7 +44,7 @@ Before the judge scores the dataset, Phase 3 compares judge outputs against a he
 
 **80% threshold is a guideline.** Inter-rater reliability requirements vary by domain and downstream use. For safety-critical content (electrical, structural), 80% may be too low; a 90% threshold with mandatory human review on all D2 failures is a reasonable escalation.
 
-**Human calibration sample size is small.** Phase A is designed for a manageable spot-check (tens to low hundreds of items), not a statistically representative stratified sample. Agreement rates computed on small samples have wide confidence intervals.
+**Human calibration sample size is small.** Human Calibration is designed for a manageable spot-check (tens to low hundreds of items), not a statistically representative stratified sample. Agreement rates computed on small samples have wide confidence intervals.
 
 **Correction loop measures pass rate, not quality.** A higher pass rate on the corrected segment means the generator is now satisfying the judge more often. It does not measure whether the generated content is actually better for homeowners.
 

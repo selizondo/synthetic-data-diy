@@ -12,7 +12,7 @@ Tradeoff: binary labels lose granularity. A "barely passes D2" item looks identi
 
 ## 80% Agreement Threshold
 
-The Phase A agreement gate requires at least 80% per-dimension agreement between human labels and LLM judge before trusting the judge on the full dataset. This matches standard inter-rater reliability cutoffs in annotation research (Cohen's kappa approximately 0.6 maps to ~80% agreement on balanced binary data). Below 80%, the dimension prompt needs revision. Above 80%, human spot-checking is sampled rather than exhaustive.
+The Human Calibration gate requires at least 80% per-dimension agreement between human labels and LLM judge before trusting the judge on the full dataset. This matches standard inter-rater reliability cutoffs in annotation research (Cohen's kappa approximately 0.6 maps to ~80% agreement on balanced binary data). Below 80%, the dimension prompt needs revision. Above 80%, human spot-checking is sampled rather than exhaustive.
 
 Agreement is computed with TP/TN/FP/FN counts per dimension, not just overall accuracy. This distinguishes "judge too strict" from "judge too lenient": both fail at 80% but need opposite prompt changes.
 
@@ -56,6 +56,6 @@ Phase 7 re-validates corrected items against the schema before acceptance. This 
 
 ## Scale Boundary: ~5,000 Items Per Run
 
-Single-process generation throughput is bounded by LLM API rate limits (~10 requests/second sustained). JSONL checkpoint files become slow to scan on restart at large sizes (O(n) trace_id dedup scan). The Phase A human calibration step assumes a manageable spot-check sample, not a statistically representative stratified sample.
+Single-process generation throughput is bounded by LLM API rate limits (~10 requests/second sustained). JSONL checkpoint files become slow to scan on restart at large sizes (O(n) trace_id dedup scan). The Human Calibration step assumes a manageable spot-check sample, not a statistically representative stratified sample.
 
 Revisit triggers: dataset target above 5K items, need for parallel phase execution across multiple workers, or a downstream consumer that requires a query-able store rather than flat JSONL files.

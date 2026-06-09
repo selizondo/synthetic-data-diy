@@ -2,7 +2,7 @@
 
 ## Key Concepts
 
-**Agreement gate:** Phase A computes human/judge agreement per dimension using TP/TN/FP/FN counts (not just overall accuracy). Distinguishes "too strict" from "too lenient" — both fail at 80% but need opposite fixes. Any dimension below 80% blocks Phase 5 and triggers prompt revision.
+**Human Calibration:** A human labels a sample of generated items on all 6 dimensions; the agreement subcommand then computes human/judge agreement using TP/TN/FP/FN counts (not just overall accuracy). Distinguishes "too strict" from "too lenient": both fail at 80% but need opposite fixes. Any dimension below 80% blocks Phase 5 and triggers prompt revision.
 
 **Heuristics first, LLM judge second:** Phase 2 applies deterministic rules (safety length, generic phrase detection, tool blocklist, tip length) before routing to LLM. Rules are fast, free, reproducible. LLM judge handles cases rules can't catch: plausible-sounding but wrong safety advice, hallucinated tools.
 
@@ -38,13 +38,13 @@ python main.py --batch-label baseline
 # Human labeling step (interactive CLI, run after Phase 2)
 python human_labeler.py --batch-label baseline
 
-# Phase A: compute human/LLM agreement per dimension
+# Human Calibration: compute human/LLM agreement per dimension
 python main.py agreement --batch-label baseline
 
 # Stats and analysis for a completed run
 python main.py stats --batch-label baseline
 
-# Correction phase (Phase 7 — requires phases 4-5 output)
+# Correction phase (Phase 7, requires phases 4-5 output)
 python main.py --phase 7 --batch-label baseline
 ```
 
@@ -59,9 +59,11 @@ python main.py --phase 7 --batch-label baseline
 | 5. Quality Eval | `--phase 5` | LLM-as-Judge scores on 6 quality dimensions D1-D6 |
 | 6. Analyze | `--phase 6` | Aggregate labels, compute agreement per dimension, produce charts |
 | 7. Correct | `--phase 7` | Identify worst segment x dimension, fix prompt, re-run phases 1-5 |
-| A. Agreement | `agreement` | Compute human/LLM agreement (requires human labels from human_labeler.py) |
 
-Human labeling is a separate optional step. Run `python human_labeler.py --batch-label <label>` after Phase 2 to collect binary pass/fail scores on all 6 dimensions.
+**Human Calibration (optional, recommended before Phase 5):** Two steps run together as a gate on the LLM judge.
+
+1. `python human_labeler.py --batch-label <label>` — human labels a sample on all 6 dimensions (interactive CLI, run after Phase 2)
+2. `python main.py agreement --batch-label <label>` — computes human/judge agreement per dimension; any dimension below 80% blocks Phase 5 and requires prompt revision
 
 ## Quality Dimensions
 

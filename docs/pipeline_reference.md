@@ -456,7 +456,7 @@ src/
 ├── phase6_analysis.py        # Analysis, visualizations, reports + benchmark gap
 ├── phase7_correction.py      # Data-driven prompt correction with iterative loop
 ├── mock_seeder.py            # Mock pipeline seeder — phases 1–6 with no API calls
-├── agreement.py              # Phase A: human/LLM agreement analysis
+├── agreement.py              # Human Calibration: human/LLM agreement analysis
 ├── human_labeler.py          # Interactive CLI for collecting human labels
 │
 ├── prompts/                  # Prompt templates organised by strategy
